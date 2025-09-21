@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ImageIcon, Download, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { facePromptPresets } from '@/lib/prompt-enhancers';
 
 interface ImageGeneratorProps {
   defaultPrompt?: string;
@@ -37,7 +38,17 @@ export default function ImageGenerator({
   category
 }: ImageGeneratorProps) {
   const [prompt, setPrompt] = useState(defaultPrompt);
+
+  // Default face generation prompts
+  const defaultFacePrompts = {
+    professional: 'Professional headshot portrait, clean background, studio lighting, confident expression, business attire, high quality, realistic, detailed facial features',
+    casual: 'Friendly portrait, natural lighting, warm smile, approachable expression, casual attire, outdoor setting, natural environment',
+    creative: 'Artistic portrait, creative lighting, thoughtful expression, unique style, artistic background, professional creative',
+    executive: 'Corporate executive portrait, office setting, professional attire, confident and experienced, clean background, studio lighting'
+  };
+
   const [style, setStyle] = useState<'realistic' | 'artistic' | 'professional' | 'casual'>('realistic');
+  const currentDefaultPrompt = defaultPrompt || defaultFacePrompts[style] || defaultFacePrompts.professional;
   const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '16:10' | '10:16' | '3:2' | '2:3'>('1:1');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
@@ -70,6 +81,14 @@ export default function ImageGenerator({
         });
       });
   }, []);
+
+  // Update prompt when style changes
+  useEffect(() => {
+    const defaultPromptForStyle = defaultFacePrompts[style];
+    if (!prompt || prompt === defaultPromptForStyle) {
+      setPrompt(defaultPromptForStyle);
+    }
+  }, [style]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -195,6 +214,45 @@ export default function ImageGenerator({
             rows={3}
             className="resize-none"
           />
+        </div>
+
+        {/* Quick Face Generation Presets */}
+        <div className="space-y-2">
+          <Label>Quick Face Generation Presets</Label>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPrompt(facePromptPresets.professionalHeadshot('Professional', 'executive').prompt)}
+            >
+              Professional Headshot
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPrompt(facePromptPresets.casualPortrait('Friendly Person', 'approachable professional').prompt)}
+            >
+              Casual Portrait
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPrompt(facePromptPresets.creativeProfessional('Creative', 'designer').prompt)}
+            >
+              Creative Professional
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPrompt(facePromptPresets.executivePortrait('Executive', 'company').prompt)}
+            >
+              Executive Portrait
+            </Button>
+          </div>
         </div>
 
         {/* Advanced Options */}
