@@ -21,19 +21,22 @@ function enhanceHumanPhotoPrompt(prompt: string, style: string, category?: strin
   
   // Add realistic human photo enhancement based on style
   const styleEnhancements = {
-    realistic: 'ultra-realistic human photography, professional portrait lighting, 85mm lens, natural skin texture, authentic facial expressions, realistic human proportions, detailed eyes and facial features',
-    professional: 'professional corporate headshot, business portrait lighting, confident expression, polished appearance, high-end photography quality',
-    artistic: 'artistic portrait photography, creative lighting, professional human photography, expressive and natural',
-    casual: 'natural portrait photography, soft lighting, authentic expression, approachable and friendly demeanor'
+    realistic: 'ultra-realistic human photography, professional portrait lighting, 85mm lens, natural skin texture, authentic facial expressions, realistic human proportions, detailed eyes and facial features, diverse ethnicity representation',
+    professional: 'professional corporate headshot, business portrait lighting, confident expression, polished appearance, high-end photography quality, inclusive professional representation',
+    artistic: 'artistic portrait photography, creative lighting, professional human photography, expressive and natural, diverse human beauty',
+    casual: 'natural portrait photography, soft lighting, authentic expression, approachable and friendly demeanor, genuine human connection'
   };
   
   const enhancement = styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic;
   
   // Technical photography specifications for realism
-  const technicalSpecs = 'shot with professional camera, sharp focus, natural lighting, realistic colors, human photorealism';
+  const technicalSpecs = 'shot with professional camera, sharp focus, natural lighting, realistic colors, human photorealism, authentic diversity';
+  
+  // Diversity and inclusion considerations
+  const inclusivitySpecs = 'representative of diverse backgrounds, inclusive human representation, authentic cultural diversity';
   
   // Combine original prompt with enhancements
-  return `${prompt}, ${enhancement}, ${technicalSpecs}`;
+  return `${prompt}, ${enhancement}, ${technicalSpecs}, ${inclusivitySpecs}`;
 }
 
 const generateImageSchema = z.object({
