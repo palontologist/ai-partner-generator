@@ -109,13 +109,18 @@ class IdeogramService {
     style: 'realistic' | 'artistic' | 'professional' | 'casual' = 'realistic'
   ): Promise<GeneratedImageResult> {
     const stylePrompts = {
-      realistic: 'photorealistic portrait, professional headshot, clean background',
-      artistic: 'artistic portrait, creative lighting, stylized',
-      professional: 'professional business portrait, formal attire, office setting',
-      casual: 'casual friendly portrait, natural lighting, approachable'
+      realistic: 'photorealistic portrait, ultra-realistic human face, professional studio lighting, 85mm lens, shallow depth of field, clean neutral background, high resolution, detailed facial features, natural skin texture, authentic human expression',
+      artistic: 'artistic portrait, creative professional lighting, stylized but realistic human features, contemporary photography, artistic composition',
+      professional: 'professional business portrait, formal attire, corporate headshot style, studio lighting, confident expression, polished appearance, office or neutral background',
+      casual: 'casual friendly portrait, natural lighting, approachable smile, relaxed expression, warm and welcoming demeanor, soft lighting'
     };
 
-    const prompt = `${stylePrompts[style]}, ${description}, high quality, detailed, ${category} professional, named ${name}`;
+    // Enhanced prompt construction for more realistic human photos
+    const basePrompt = stylePrompts[style];
+    const categoryContext = this.getCategorySpecificContext(category);
+    const humanFeatureEnhancements = 'realistic human proportions, natural facial expressions, authentic eye contact, professional photography quality';
+    
+    const prompt = `${basePrompt}, ${description}, ${categoryContext}, ${humanFeatureEnhancements}, person named ${name}`;
 
     return this.generateImage({
       prompt,
@@ -123,6 +128,26 @@ class IdeogramService {
       style_type: style === 'realistic' ? 'Realistic' : 'General',
       magic_prompt_option: 'On',
     });
+  }
+
+  /**
+   * Get category-specific context for human portraits
+   */
+  private getCategorySpecificContext(category: string): string {
+    const categoryContexts = {
+      'business': 'confident business professional, smart attire, leadership qualities',
+      'academic': 'intelligent scholar, thoughtful expression, academic environment',
+      'travel': 'adventurous spirit, worldly experience, friendly approachable demeanor',
+      'creative': 'creative artist, expressive eyes, artistic sensibility',
+      'lifestyle': 'healthy lifestyle coach, positive energy, motivational presence',
+      'technology': 'tech professional, innovative mindset, modern professional appearance',
+      'healthcare': 'caring healthcare professional, trustworthy appearance, compassionate expression',
+      'education': 'experienced educator, knowledgeable demeanor, approachable teacher',
+      'sports': 'athletic professional, fit physique, determined expression',
+      'finance': 'financial expert, professional appearance, analytical mindset'
+    };
+
+    return categoryContexts[category as keyof typeof categoryContexts] || 'experienced professional, competent appearance';
   }
 
   /**
@@ -149,6 +174,72 @@ class IdeogramService {
       prompt,
       aspect_ratio: '16:9',
       style_type: style as any,
+      magic_prompt_option: 'On',
+    });
+  }
+
+  /**
+   * Enhanced human portrait generation with demographic considerations
+   */
+  async generateDiverseHumanPortrait(
+    description: string,
+    options: {
+      style?: 'realistic' | 'artistic' | 'professional' | 'casual';
+      ageRange?: 'young' | 'middle-aged' | 'senior';
+      ethnicity?: string;
+      gender?: string;
+      category?: string;
+    } = {}
+  ): Promise<GeneratedImageResult> {
+    const { style = 'realistic', ageRange, ethnicity, gender, category } = options;
+    
+    // Base photography setup for realistic human photos
+    const photographyBase = 'professional portrait photography, studio lighting, 85mm lens, shallow depth of field, natural expression';
+    
+    // Age-appropriate descriptors
+    const ageDescriptors = {
+      'young': 'youthful appearance, energetic expression, early career professional',
+      'middle-aged': 'experienced professional, confident mature appearance, established career',
+      'senior': 'distinguished senior professional, wisdom in expression, executive presence'
+    };
+    
+    // Professional context based on category
+    const categoryContext = category ? this.getCategorySpecificContext(category) : 'professional expert';
+    
+    // Build comprehensive prompt
+    let prompt = `${photographyBase}, ${description}`;
+    
+    if (ageRange && ageDescriptors[ageRange]) {
+      prompt += `, ${ageDescriptors[ageRange]}`;
+    }
+    
+    if (ethnicity) {
+      prompt += `, ${ethnicity} heritage`;
+    }
+    
+    if (gender) {
+      prompt += `, ${gender} professional`;
+    }
+    
+    prompt += `, ${categoryContext}`;
+    
+    // Style-specific enhancements
+    const styleEnhancements = {
+      realistic: 'photorealistic human face, natural skin texture, authentic facial features, realistic lighting, genuine expression',
+      artistic: 'artistic portrait style, creative lighting, expressive human features, contemporary photography',
+      professional: 'corporate headshot style, business professional appearance, confident expression, formal setting',
+      casual: 'natural casual portrait, soft lighting, relaxed expression, approachable demeanor'
+    };
+    
+    prompt += `, ${styleEnhancements[style]}`;
+    
+    // Final quality and realism modifiers
+    prompt += ', high resolution, professional photography quality, realistic human proportions, detailed facial features';
+    
+    return this.generateImage({
+      prompt,
+      aspect_ratio: '1:1',
+      style_type: style === 'realistic' ? 'Realistic' : 'General',
       magic_prompt_option: 'On',
     });
   }

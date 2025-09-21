@@ -90,14 +90,56 @@ export default function EnhancedProfileForm({
 
   const generateAutoPrompt = () => {
     const { name, category, bio, age, location } = formData;
-    let prompt = `Professional ${category} expert`;
     
-    if (name) prompt += ` named ${name}`;
-    if (age) prompt += `, ${age} years old`;
-    if (location) prompt += ` from ${location}`;
-    if (bio) prompt += `, ${bio.slice(0, 100)}`;
+    // Enhanced prompt generation for more realistic human photos
+    let prompt = '';
     
-    prompt += ', high quality portrait, professional headshot';
+    // Professional context based on category
+    const categoryDescriptions = {
+      'business': 'confident business professional, wearing smart business attire',
+      'academic': 'intelligent academic researcher, scholarly appearance, thoughtful expression',
+      'travel': 'experienced travel guide, adventurous spirit, welcoming smile',
+      'creative': 'creative professional, artistic sensibility, expressive eyes',
+      'lifestyle': 'lifestyle coach, positive energy, healthy appearance',
+      'technology': 'tech professional, modern appearance, innovative mindset',
+      'healthcare': 'healthcare professional, caring demeanor, trustworthy appearance',
+      'education': 'experienced educator, approachable teacher, knowledgeable expression',
+      'sports': 'athletic professional, fit appearance, determined expression',
+      'finance': 'financial expert, professional demeanor, analytical look'
+    };
+    
+    prompt = categoryDescriptions[category as keyof typeof categoryDescriptions] || `professional ${category} expert`;
+    
+    // Add age-appropriate descriptors
+    if (age) {
+      if (age < 30) {
+        prompt += ', young professional appearance, energetic expression';
+      } else if (age < 50) {
+        prompt += ', experienced professional, confident mature appearance';
+      } else {
+        prompt += ', senior expert, distinguished appearance, wisdom in expression';
+      }
+    }
+    
+    // Add location-based cultural context if provided
+    if (location) {
+      prompt += `, from ${location}`;
+    }
+    
+    // Extract relevant descriptors from bio for physical appearance
+    if (bio) {
+      const bioSnippet = bio.slice(0, 120);
+      prompt += `, ${bioSnippet}`;
+    }
+    
+    // Add name reference
+    if (name) {
+      prompt += `, person named ${name}`;
+    }
+    
+    // Enhanced realistic photo descriptors
+    const photographyDetails = 'photorealistic portrait, professional studio lighting, 85mm lens, natural facial expressions, detailed facial features, authentic human appearance, high resolution, realistic skin texture, genuine smile, direct eye contact';
+    prompt += `, ${photographyDetails}`;
     
     handleInputChange('imagePrompt', prompt);
     setShowImageGenerator(true);

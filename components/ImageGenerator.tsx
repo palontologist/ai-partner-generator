@@ -195,6 +195,16 @@ export default function ImageGenerator({
             rows={3}
             className="resize-none"
           />
+          {/* Human Photo Tips */}
+          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md">
+            <strong>💡 Tips for realistic human photos:</strong>
+            <ul className="mt-1 space-y-0.5 list-disc list-inside">
+              <li>Include details like "professional woman in her 30s" or "confident business executive"</li>
+              <li>Specify appearance: "warm smile", "authentic expression", "direct eye contact"</li>
+              <li>Add professional context: "healthcare professional", "tech entrepreneur", "academic researcher"</li>
+              <li>Use "photorealistic" and "professional photography" for best results</li>
+            </ul>
+          </div>
         </div>
 
         {/* Advanced Options */}
@@ -207,12 +217,18 @@ export default function ImageGenerator({
                   <SelectValue placeholder="Select style" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="realistic">Realistic</SelectItem>
-                  <SelectItem value="artistic">Artistic</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="casual">Casual</SelectItem>
+                  <SelectItem value="realistic">Realistic - Ultra-realistic human photography</SelectItem>
+                  <SelectItem value="professional">Professional - Business headshot style</SelectItem>
+                  <SelectItem value="casual">Casual - Natural, approachable portraits</SelectItem>
+                  <SelectItem value="artistic">Artistic - Creative portrait style</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="text-xs text-muted-foreground">
+                {style === 'realistic' && '📸 Best for lifelike human portraits with natural features'}
+                {style === 'professional' && '👔 Perfect for business profiles and corporate headshots'}
+                {style === 'casual' && '😊 Great for friendly, approachable team member photos'}
+                {style === 'artistic' && '🎨 Creative portraits with artistic lighting and composition'}
+              </div>
             </div>
 
             <div className="space-y-2">

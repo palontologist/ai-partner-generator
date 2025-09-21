@@ -7,6 +7,35 @@ import { ideogramService } from '@/lib/services/ideogram';
 import { validateEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
+/**
+ * Enhance prompts specifically for human photo generation
+ */
+function enhanceHumanPhotoPrompt(prompt: string, style: string, category?: string): string {
+  // Check if this looks like a human/person description
+  const humanKeywords = ['person', 'professional', 'expert', 'named', 'years old', 'portrait', 'headshot', 'human', 'man', 'woman', 'individual'];
+  const isHumanPhoto = humanKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
+  
+  if (!isHumanPhoto) {
+    return prompt; // Return original prompt if not human-related
+  }
+  
+  // Add realistic human photo enhancement based on style
+  const styleEnhancements = {
+    realistic: 'ultra-realistic human photography, professional portrait lighting, 85mm lens, natural skin texture, authentic facial expressions, realistic human proportions, detailed eyes and facial features',
+    professional: 'professional corporate headshot, business portrait lighting, confident expression, polished appearance, high-end photography quality',
+    artistic: 'artistic portrait photography, creative lighting, professional human photography, expressive and natural',
+    casual: 'natural portrait photography, soft lighting, authentic expression, approachable and friendly demeanor'
+  };
+  
+  const enhancement = styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic;
+  
+  // Technical photography specifications for realism
+  const technicalSpecs = 'shot with professional camera, sharp focus, natural lighting, realistic colors, human photorealism';
+  
+  // Combine original prompt with enhancements
+  return `${prompt}, ${enhancement}, ${technicalSpecs}`;
+}
+
 const generateImageSchema = z.object({
   prompt: z.string().min(1).max(1000),
   userId: z.string().optional(),
@@ -51,9 +80,12 @@ export async function POST(request: NextRequest) {
     let errorType: string | null = null;
 
     try {
+      // Enhance prompt for human photo generation
+      const enhancedPrompt = enhanceHumanPhotoPrompt(prompt, style, category);
+      
       // Generate the image using Ideogram service
       const result = await ideogramService.generateImage({
-        prompt,
+        prompt: enhancedPrompt,
         aspect_ratio: aspectRatio,
         style_type: style === 'realistic' ? 'Realistic' : 'General',
         magic_prompt_option: 'On',
