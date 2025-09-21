@@ -1,5 +1,6 @@
 import Replicate from 'replicate';
 import { v4 as uuidv4 } from 'uuid';
+import { enhanceFacePrompt, generateCategoryFacePrompt, FaceGenerationOptions } from './prompt-enhancers';
 
 export interface IdeogramGenerationOptions {
   prompt: string;
@@ -108,19 +109,32 @@ class IdeogramService {
     description: string,
     style: 'realistic' | 'artistic' | 'professional' | 'casual' = 'realistic'
   ): Promise<GeneratedImageResult> {
-    const stylePrompts = {
-      realistic: 'photorealistic portrait, professional headshot, clean background',
-      artistic: 'artistic portrait, creative lighting, stylized',
-      professional: 'professional business portrait, formal attire, office setting',
-      casual: 'casual friendly portrait, natural lighting, approachable'
+    // Extract age from description if available
+    const ageMatch = description.match(/(\d+)\s*years?\s*old/i);
+    const age = ageMatch ? parseInt(ageMatch[1]) : null;
+
+    // Use enhanced prompt generation
+    const baseDescription = `${name}, ${category} professional, ${description}`;
+
+    const styleMap = {
+      realistic: 'realistic' as const,
+      artistic: 'artistic' as const,
+      professional: 'professional' as const,
+      casual: 'casual' as const
     };
 
-    const prompt = `${stylePrompts[style]}, ${description}, high quality, detailed, ${category} professional, named ${name}`;
+    const enhanced = enhanceFacePrompt(baseDescription, {
+      style: styleMap[style],
+      age,
+      mood: style === 'casual' ? 'friendly' : 'professional',
+      lighting: style === 'artistic' ? 'dramatic' : 'studio',
+      background: style === 'professional' ? 'office' : 'clean'
+    });
 
     return this.generateImage({
-      prompt,
+      prompt: enhanced.prompt,
       aspect_ratio: '1:1',
-      style_type: style === 'realistic' ? 'Realistic' : 'General',
+      style_type: enhanced.styleType,
       magic_prompt_option: 'On',
     });
   }
