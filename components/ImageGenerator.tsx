@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,34 @@ export default function ImageGenerator({
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [copied, setCopied] = useState(false);
+  const [envStatus, setEnvStatus] = useState<{
+    isValid: boolean;
+    missingVars: string[];
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    // Check environment configuration on component mount
+    fetch('/api/health')
+      .then(res => res.json())
+      .then(data => {
+        if (data.configuration) {
+          setEnvStatus({
+            isValid: data.configuration.isValid,
+            missingVars: data.configuration.missingVars || [],
+            message: data.configuration.message || 'Configuration status unknown'
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Failed to check environment status:', error);
+        setEnvStatus({
+          isValid: false,
+          missingVars: ['Unknown'],
+          message: 'Failed to check configuration status'
+        });
+      });
+  }, []);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -140,6 +168,22 @@ export default function ImageGenerator({
       </CardHeader>
       
       <CardContent className="space-y-6">
+        {/* Environment Status Warning */}
+        {envStatus && !envStatus.isValid && (
+          <div className="p-4 border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20 rounded-lg">
+            <div className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+              <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">!</div>
+              <span className="font-medium">Configuration Required</span>
+            </div>
+            <p className="text-sm text-orange-700 dark:text-orange-300 mt-2">
+              {envStatus.message}
+            </p>
+            <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+              Missing: {envStatus.missingVars.join(', ')}
+            </div>
+          </div>
+        )}
+        
         {/* Prompt Input */}
         <div className="space-y-2">
           <Label htmlFor="prompt">Image Description</Label>
@@ -194,7 +238,7 @@ export default function ImageGenerator({
         {/* Generate Button */}
         <Button 
           onClick={handleGenerate} 
-          disabled={isGenerating || !prompt.trim()}
+          disabled={isGenerating || !prompt.trim() || (envStatus && !envStatus.isValid)}
           className="w-full"
           size="lg"
         >

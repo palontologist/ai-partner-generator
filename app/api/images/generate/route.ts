@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { generatedImages, imageGenerationHistory } from '@/lib/db/schema';
 import { ideogramService } from '@/lib/services/ideogram';
+import { validateEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
 const generateImageSchema = z.object({
@@ -17,6 +18,20 @@ const generateImageSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check environment configuration
+    const envCheck = validateEnvironment();
+    if (!envCheck.isValid) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Service not properly configured', 
+          details: `Missing environment variables: ${envCheck.missingVars.join(', ')}`,
+          missingVars: envCheck.missingVars
+        },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const validation = generateImageSchema.safeParse(body);
 

@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { teammates } from '@/lib/db/schema';
 import { ideogramService } from '@/lib/services/ideogram';
+import { validateEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
 const generateTeammateSchema = z.object({
@@ -22,6 +23,20 @@ const generateTeammateSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check environment configuration
+    const envCheck = validateEnvironment();
+    if (!envCheck.isValid) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Service not properly configured', 
+          details: `Missing environment variables: ${envCheck.missingVars.join(', ')}`,
+          missingVars: envCheck.missingVars
+        },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const validation = generateTeammateSchema.safeParse(body);
 

@@ -25,16 +25,19 @@ export interface GeneratedImageResult {
 }
 
 class IdeogramService {
-  private replicate: Replicate;
+  private replicate: Replicate | null = null;
 
-  constructor() {
-    if (!process.env.REPLICATE_API_TOKEN) {
-      throw new Error('REPLICATE_API_TOKEN is not configured');
+  private getReplicateClient() {
+    if (!this.replicate) {
+      if (!process.env.REPLICATE_API_TOKEN) {
+        throw new Error('REPLICATE_API_TOKEN is not configured');
+      }
+      
+      this.replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
     }
-    
-    this.replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-    });
+    return this.replicate;
   }
 
   /**
@@ -56,7 +59,8 @@ class IdeogramService {
 
       console.log('Generating image with Ideogram v3 Turbo:', input);
 
-      const prediction = await this.replicate.run(
+      const replicate = this.getReplicateClient();
+      const prediction = await replicate.run(
         'ideogram-ai/ideogram-v3-turbo' as any,
         {
           input,
@@ -155,7 +159,8 @@ class IdeogramService {
   async healthCheck(): Promise<boolean> {
     try {
       // Try to list models to verify API connectivity
-      const models = await this.replicate.models.list();
+      const replicate = this.getReplicateClient();
+      const models = await replicate.models.list();
       return true;
     } catch (error) {
       console.error('Replicate API health check failed:', error);
