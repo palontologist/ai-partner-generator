@@ -2,17 +2,16 @@ import Replicate from 'replicate';
 import { v4 as uuidv4 } from 'uuid';
 import { enhanceFacePrompt, generateCategoryFacePrompt, FaceGenerationOptions } from '@/lib/prompt-enhancers';
 
-export interface IdeogramGenerationOptions {
+export interface FluxGenerationOptions {
   prompt: string;
-  aspect_ratio?: '1:1' | '16:10' | '10:16' | '16:9' | '9:16' | '3:2' | '2:3';
-  model?: 'V_3_TURBO' | 'V_3';
-  magic_prompt_option?: 'Auto' | 'On' | 'Off';
+  aspect_ratio?: '1:1' | '16:9' | '2:3' | '3:2' | '4:5' | '5:4' | '9:16' | '16:10';
+  model?: 'flux-dev' | 'flux-schnell';
   seed?: number;
-  style_type?: 'Auto' | 'General' | 'Realistic' | 'Design' | 'Render_3D' | 'Anime';
-  color_palette?: {
-    name?: string;
-    colors?: string[];
-  };
+  steps?: number;
+  guidance?: number;
+  interval?: number;
+  safety_tolerance?: number;
+  prompt_upsampling?: boolean;
 }
 
 export interface GeneratedImageResult {
@@ -20,12 +19,12 @@ export interface GeneratedImageResult {
   imageUrl: string;
   prompt: string;
   replicateId: string;
-  parameters: IdeogramGenerationOptions;
+  parameters: FluxGenerationOptions;
   status: 'completed' | 'failed';
   error?: string;
 }
 
-class IdeogramService {
+class FluxService {
   private replicate: Replicate | null = null;
 
   private getReplicateClient() {
@@ -33,7 +32,7 @@ class IdeogramService {
       if (!process.env.REPLICATE_API_TOKEN) {
         throw new Error('REPLICATE_API_TOKEN is not configured');
       }
-      
+
       this.replicate = new Replicate({
         auth: process.env.REPLICATE_API_TOKEN,
       });
@@ -42,27 +41,29 @@ class IdeogramService {
   }
 
   /**
-   * Generate an image using Ideogram v3 Turbo
+   * Generate an image using Flux Dev
    */
-  async generateImage(options: IdeogramGenerationOptions): Promise<GeneratedImageResult> {
+  async generateImage(options: FluxGenerationOptions): Promise<GeneratedImageResult> {
     const id = uuidv4();
     
     try {
       const input = {
         prompt: options.prompt,
         aspect_ratio: options.aspect_ratio || '1:1',
-        model: options.model || 'V_3_TURBO',
-        magic_prompt_option: options.magic_prompt_option || 'Auto',
-        ...(options.seed && { seed: options.seed }),
-        ...(options.style_type && { style_type: options.style_type }),
-        ...(options.color_palette && { color_palette: options.color_palette }),
+        model: options.model || 'flux-dev',
+        seed: options.seed,
+        steps: options.steps || 20,
+        guidance: options.guidance || 3.5,
+        interval: options.interval || 2,
+        safety_tolerance: options.safety_tolerance || 2,
+        prompt_upsampling: options.prompt_upsampling !== false,
       };
 
-      console.log('Generating image with Ideogram v3 Turbo:', input);
+      console.log('Generating image with Flux Dev:', input);
 
       const replicate = this.getReplicateClient();
       const prediction = await replicate.run(
-        'ideogram-ai/ideogram-v3-turbo' as any,
+        'black-forest-labs/flux-dev' as any,
         {
           input,
         }
@@ -73,7 +74,7 @@ class IdeogramService {
       const imageUrl = imageUrls[0] as string;
 
       if (!imageUrl) {
-        throw new Error('No image URL returned from Ideogram API');
+        throw new Error('No image URL returned from Flux API');
       }
 
       return {
@@ -87,7 +88,7 @@ class IdeogramService {
 
     } catch (error) {
       console.error('Error generating image:', error);
-      
+
       return {
         id,
         imageUrl: '',
@@ -134,8 +135,11 @@ class IdeogramService {
     return this.generateImage({
       prompt: enhanced.prompt,
       aspect_ratio: '1:1',
-      style_type: enhanced.styleType,
-      magic_prompt_option: 'On',
+      model: 'flux-dev',
+      seed: Math.floor(Math.random() * 1000000), // Random seed for variety
+      steps: 20,
+      guidance: 3.5,
+      prompt_upsampling: true,
     });
   }
 
@@ -162,8 +166,11 @@ class IdeogramService {
     return this.generateImage({
       prompt,
       aspect_ratio: '16:9',
-      style_type: style as any,
-      magic_prompt_option: 'On',
+      model: 'flux-dev',
+      seed: Math.floor(Math.random() * 1000000),
+      steps: 20,
+      guidance: 3.5,
+      prompt_upsampling: true,
     });
   }
 
@@ -183,4 +190,4 @@ class IdeogramService {
   }
 }
 
-export const ideogramService = new IdeogramService();
+export const fluxService = new FluxService();

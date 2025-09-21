@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { generatedImages, imageGenerationHistory } from '@/lib/db/schema';
-import { ideogramService } from '@/lib/services/ideogram';
+import { fluxService } from '@/lib/services/flux';
 import { validateEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
@@ -51,12 +51,15 @@ export async function POST(request: NextRequest) {
     let errorType: string | null = null;
 
     try {
-      // Generate the image using Ideogram service
-      const result = await ideogramService.generateImage({
+      // Generate the image using Flux service
+      const result = await fluxService.generateImage({
         prompt,
         aspect_ratio: aspectRatio,
-        style_type: style === 'realistic' ? 'Realistic' : 'General',
-        magic_prompt_option: 'On',
+        model: 'flux-dev',
+        seed: Math.floor(Math.random() * 1000000),
+        steps: 20,
+        guidance: 3.5,
+        prompt_upsampling: true,
       });
 
       generationSuccess = result.status === 'completed';
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
           prompt: result.prompt,
           imageUrl: result.imageUrl,
           replicateId: result.replicateId,
-          model: 'ideogram-ai/ideogram-v3-turbo',
+          model: 'black-forest-labs/flux-dev',
           parameters: JSON.stringify(result.parameters),
           status: 'completed',
         });

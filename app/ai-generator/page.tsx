@@ -34,7 +34,7 @@ export default function AIGeneratorPage() {
           <div className="flex flex-wrap justify-center gap-4 mt-6">
             <Badge variant="secondary" className="flex items-center gap-2 px-4 py-2">
               <Zap className="h-4 w-4" />
-              Ideogram v3 Turbo
+              Flux Dev
             </Badge>
             <Badge variant="secondary" className="flex items-center gap-2 px-4 py-2">
               <Target className="h-4 w-4" />
@@ -86,7 +86,7 @@ export default function AIGeneratorPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-6">
-                    Generate high-quality images using Ideogram v3 Turbo AI model. Perfect for creating avatars, 
+                    Generate high-quality images using Flux Dev AI model. Perfect for creating avatars, 
                     professional headshots, or creative visual content.
                   </p>
                 </CardContent>
@@ -183,7 +183,7 @@ export default function AIGeneratorPage() {
               <ImageIcon className="h-12 w-12 text-purple-600 mx-auto mb-4" />
               <h3 className="font-semibold text-lg mb-2">AI Image Generation</h3>
               <p className="text-sm text-muted-foreground">
-                Generate high-quality, professional images using Ideogram v3 Turbo model
+                Generate high-quality, professional images using Flux Dev model
               </p>
             </CardContent>
           </Card>

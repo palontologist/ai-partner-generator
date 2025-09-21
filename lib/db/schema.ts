@@ -37,7 +37,7 @@ export const generatedImages = sqliteTable('generated_images', {
   prompt: text('prompt').notNull(),
   imageUrl: text('image_url').notNull(),
   replicateId: text('replicate_id'), // Replicate prediction ID
-  model: text('model').default('ideogram-ai/ideogram-v3-turbo').notNull(),
+  model: text('model').default('black-forest-labs/flux-dev').notNull(),
   parameters: text('parameters'), // JSON string of generation parameters
   status: text('status').default('pending').notNull(), // pending, completed, failed
   errorMessage: text('error_message'),
