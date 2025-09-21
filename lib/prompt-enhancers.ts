@@ -75,10 +75,10 @@ export function enhanceFacePrompt(
   };
 
   // Camera settings for realism
-  const cameraSettings = '85mm portrait lens, f/2.8 aperture, shallow depth of field, sharp focus on face';
+  const cameraSettingsText = '85mm portrait lens, f/2.8 aperture, shallow depth of field, sharp focus on face';
 
   // Facial detail enhancements
-  const facialDetails = 'detailed facial features, realistic skin texture, natural pores and fine details, high resolution facial anatomy, realistic proportions, anatomically correct features';
+  const facialDetailsText = 'detailed facial features, realistic skin texture, natural pores and fine details, high resolution facial anatomy, realistic proportions, anatomically correct features';
 
   // Age-specific enhancements
   let ageEnhancement = '';
@@ -117,11 +117,11 @@ export function enhanceFacePrompt(
   prompt += `, ${moodExpressions[mood]}, ${lightingOptions[lighting]}, ${backgroundOptions[background]}`;
 
   if (facialDetails) {
-    prompt += `, ${facialDetails}`;
+    prompt += `, ${facialDetailsText}`;
   }
 
   if (cameraSettings) {
-    prompt += `, ${cameraSettings}`;
+    prompt += `, ${cameraSettingsText}`;
   }
 
   // Add quality and realism enhancers
