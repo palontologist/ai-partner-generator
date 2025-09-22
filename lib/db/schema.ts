@@ -70,6 +70,30 @@ export const imageGenerationHistory = sqliteTable('image_generation_history', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// Table to track visitor analytics
+export const visitorTracking = sqliteTable('visitor_tracking', {
+  id: text('id').primaryKey(),
+  visitorId: text('visitor_id').notNull(),
+  sessionId: text('session_id').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  referrer: text('referrer'),
+  page: text('page').notNull(),
+  visitTime: text('visit_time').default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Table to track user sessions for active user count
+export const userSessions = sqliteTable('user_sessions', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id').unique().notNull(),
+  visitorId: text('visitor_id').notNull(),
+  startTime: text('start_time').default(sql`CURRENT_TIMESTAMP`).notNull(),
+  lastActivity: text('last_activity').default(sql`CURRENT_TIMESTAMP`).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Teammate = typeof teammates.$inferSelect;
@@ -80,3 +104,7 @@ export type UserPreference = typeof userPreferences.$inferSelect;
 export type NewUserPreference = typeof userPreferences.$inferInsert;
 export type ImageGenerationHistory = typeof imageGenerationHistory.$inferSelect;
 export type NewImageGenerationHistory = typeof imageGenerationHistory.$inferInsert;
+export type VisitorTracking = typeof visitorTracking.$inferSelect;
+export type NewVisitorTracking = typeof visitorTracking.$inferInsert;
+export type UserSession = typeof userSessions.$inferSelect;
+export type NewUserSession = typeof userSessions.$inferInsert;
