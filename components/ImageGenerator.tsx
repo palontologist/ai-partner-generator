@@ -38,7 +38,7 @@ export default function ImageGenerator({
   teammateId,
   category
 }: ImageGeneratorProps) {
-  const [prompt, setPrompt] = useState(defaultPrompt);
+  const [prompt, setPrompt] = useState(defaultPrompt || '');
 
   // Default face generation prompts
   const defaultFacePrompts = {
@@ -95,16 +95,23 @@ export default function ImageGenerator({
       });
   }, []);
 
-  // Update prompt when style changes
+  // Set initial prompt if empty
+  useEffect(() => {
+    if (!prompt) {
+      setPrompt(defaultFacePrompts[style]);
+    }
+  }, []);
+
+  // Update prompt when style changes or if no initial prompt is set
   useEffect(() => {
     const defaultPromptForStyle = defaultFacePrompts[style];
-    if (!prompt || prompt === defaultPromptForStyle) {
+    if (!prompt || prompt === defaultPromptForStyle || prompt === '') {
       setPrompt(defaultPromptForStyle);
     }
   }, [style]);
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) {
+    if (!prompt?.trim()) {
       toast.error('Please enter a prompt for image generation');
       return;
     }
@@ -329,7 +336,7 @@ export default function ImageGenerator({
         {/* Generate Button */}
         <Button 
           onClick={handleGenerate} 
-          disabled={isGenerating || !prompt.trim() || (envStatus && !envStatus.isValid)}
+          disabled={isGenerating || !prompt?.trim() || (envStatus && !envStatus.isValid)}
           className="w-full"
           size="lg"
         >
