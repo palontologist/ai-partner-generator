@@ -8,6 +8,13 @@
       "when": 1758477695180,
       "tag": "0000_big_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1758548919014,
+      "tag": "0001_strange_mathemanic",
+      "breakpoints": true
     }
   ]
 }

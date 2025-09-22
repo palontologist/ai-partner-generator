@@ -144,6 +144,66 @@ export default function RealisticFaceGenerator({
     }
   };
 
+  const handleGenerateDiverse = async () => {
+    setIsGenerating(true);
+    setGeneratedFace(null);
+
+    try {
+      const response = await fetch('/api/images/diverse-partner', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: params.profession,
+          description: `${params.expression}, ${params.profession} appearance`,
+          style: 'realistic',
+          gender: params.gender === 'person' ? 'any' : params.gender,
+          userId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data.status === 'completed') {
+        const faceData: GeneratedFace = {
+          id: result.data.id,
+          imageUrl: result.data.imageUrl,
+          prompt: result.data.prompt,
+          parameters: params,
+          status: 'completed',
+        };
+        
+        setGeneratedFace(faceData);
+        onImageGenerated?.(faceData.imageUrl, faceData.prompt, params);
+        toast.success('Diverse AI partner generated successfully!');
+      } else {
+        setGeneratedFace({
+          id: 'error',
+          imageUrl: '',
+          prompt: 'diverse AI partner',
+          parameters: params,
+          status: 'failed',
+          error: result.data?.error || result.error || 'Failed to generate diverse face',
+        });
+        toast.error(result.data?.error || result.error || 'Failed to generate diverse face');
+      }
+    } catch (error) {
+      console.error('Error generating diverse face:', error);
+      setGeneratedFace({
+        id: 'error',
+        imageUrl: '',
+        prompt: 'diverse AI partner',
+        parameters: params,
+        status: 'failed',
+        error: 'Network error occurred',
+      });
+      toast.error('Network error occurred while generating diverse face');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleCopyPrompt = async () => {
     if (generatedFace?.prompt) {
       try {
@@ -341,24 +401,53 @@ export default function RealisticFaceGenerator({
               </p>
             </div>
 
-            <Button 
-              onClick={handleGenerate} 
-              disabled={isGenerating || (envStatus && !envStatus.isValid) || false}
-              className="w-full"
-              size="lg"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Realistic Face...
-                </>
-              ) : (
-                <>
-                  <User className="mr-2 h-4 w-4" />
-                  Generate Realistic Human Face
-                </>
-              )}
-            </Button>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-blue-600" />
+                <Label className="text-sm font-medium text-blue-800 dark:text-blue-200">Diversity Enhancement</Label>
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <strong>Generate Face:</strong> Uses your specified parameters<br/>
+                <strong>Diverse:</strong> Automatically randomizes ethnicity, age, features, and expressions for maximum variety
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleGenerate} 
+                disabled={isGenerating || (envStatus && !envStatus.isValid) || false}
+                className="flex-1"
+                size="lg"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <User className="mr-2 h-4 w-4" />
+                    Generate Face
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={handleGenerateDiverse} 
+                disabled={isGenerating || (envStatus && !envStatus.isValid) || false}
+                variant="outline"
+                size="lg"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Diverse
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Results Panel */}

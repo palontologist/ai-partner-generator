@@ -3,25 +3,23 @@ import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { generatedImages, imageGenerationHistory } from '@/lib/db/schema';
-import { ideogramService } from '@/lib/services/ideogram';
 import { imagenService } from '@/lib/services/imagen';
 import { validateImageGenerationEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
-const generateImageSchema = z.object({
-  prompt: z.string().min(1).max(1000),
+const generateDiversePartnerSchema = z.object({
+  category: z.string().optional().default('business'),
+  description: z.string().optional().default('professional and approachable'),
+  style: z.enum(['realistic', 'artistic', 'professional', 'casual']).default('realistic'),
+  gender: z.enum(['male', 'female', 'non-binary', 'any']).default('any'),
   userId: z.string().optional(),
   teammateId: z.string().optional(),
-  style: z.enum(['realistic', 'artistic', 'professional', 'casual']).default('realistic'),
-  aspectRatio: z.enum(['1:1', '16:10', '10:16', '16:9', '9:16', '3:2', '2:3']).default('1:1'),
-  category: z.string().optional(),
-  provider: z.enum(['ideogram', 'imagen']).default('ideogram'),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validation = generateImageSchema.safeParse(body);
+    const validation = generateDiversePartnerSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
@@ -30,15 +28,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { prompt, userId, teammateId, style, aspectRatio, category, provider } = validation.data;
+    const { category, description, style, gender, userId, teammateId } = validation.data;
 
-    // Check environment configuration for the selected provider
-    const envCheck = validateImageGenerationEnvironment(provider);
+    // Check environment configuration for Imagen
+    const envCheck = validateImageGenerationEnvironment('imagen');
     if (!envCheck.isValid) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `${provider} service not properly configured`, 
+          error: 'Imagen service not properly configured', 
           details: `Missing environment variables: ${envCheck.missingVars.join(', ')}`,
           missingVars: envCheck.missingVars
         },
@@ -46,31 +44,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Starting image generation:', { prompt, style, aspectRatio, provider });
+    console.log('Starting diverse AI partner generation:', { category, description, style, gender });
 
     const startTime = Date.now();
     let generationSuccess = false;
     let errorType: string | null = null;
-    let result: any;
 
     try {
-      // Select the appropriate service based on provider
-      if (provider === 'imagen') {
-        result = await imagenService.generateImage({
-          prompt,
-          aspect_ratio: aspectRatio,
-          style_type: style,
-          number_of_images: 1,
-        });
-      } else {
-        // Default to Ideogram
-        result = await ideogramService.generateImage({
-          prompt,
-          aspect_ratio: aspectRatio,
-          style_type: style === 'realistic' ? 'Realistic' : 'General',
-          magic_prompt_option: 'On',
-        });
-      }
+      // Generate diverse AI partner using Imagen
+      const result = await imagenService.generateDiverseAIPartner({
+        category,
+        description,
+        style,
+        gender,
+      });
 
       generationSuccess = result.status === 'completed';
       
@@ -89,13 +76,19 @@ export async function POST(request: NextRequest) {
           prompt: result.prompt,
           imageUrl: result.imageUrl,
           replicateId: result.replicateId,
-          model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 'ideogram-ai/ideogram-v3-turbo',
-          provider: provider,
-          parameters: JSON.stringify(result.parameters),
+          model: 'imagen-4.0-generate-001',
+          provider: 'imagen',
+          parameters: JSON.stringify({
+            ...result.parameters,
+            category,
+            description,
+            style,
+            gender
+          }),
           status: 'completed',
         });
 
-        console.log('Image generated and stored successfully:', imageId);
+        console.log('Diverse AI partner generated and stored successfully:', imageId);
       }
 
       // Log generation history
@@ -105,10 +98,10 @@ export async function POST(request: NextRequest) {
         await db.insert(imageGenerationHistory).values({
           id: uuidv4(),
           userId,
-          prompt,
-          category: category || null,
+          prompt: result.prompt,
+          category: category,
           style,
-          provider,
+          provider: 'imagen',
           generationTime,
           success: generationSuccess,
           errorType,
@@ -118,12 +111,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: generationSuccess,
         data: result,
-        provider,
-        message: generationSuccess ? `Image generated successfully using ${provider}` : `Image generation failed with ${provider}`,
+        provider: 'imagen',
+        message: generationSuccess ? 'Diverse AI partner generated successfully using Imagen' : 'AI partner generation failed with Imagen',
       });
 
     } catch (serviceError) {
-      console.error(`Service error during image generation with ${provider}:`, serviceError);
+      console.error('Service error during diverse AI partner generation:', serviceError);
       errorType = 'service_error';
       generationSuccess = false;
 
@@ -134,10 +127,10 @@ export async function POST(request: NextRequest) {
         await db.insert(imageGenerationHistory).values({
           id: uuidv4(),
           userId,
-          prompt,
-          category: category || null,
+          prompt: `Diverse ${category} AI partner`,
+          category: category,
           style,
-          provider,
+          provider: 'imagen',
           generationTime,
           success: false,
           errorType: 'service_error',
@@ -147,8 +140,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `Failed to generate image with ${provider}`, 
-          provider,
+          error: 'Failed to generate diverse AI partner with Imagen', 
+          provider: 'imagen',
           details: serviceError instanceof Error ? serviceError.message : 'Unknown service error'
         },
         { status: 500 }
@@ -168,7 +161,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const teammateId = searchParams.get('teammateId');
     const limit = parseInt(searchParams.get('limit') || '10');
 
     let query = db.select().from(generatedImages);
@@ -177,11 +169,10 @@ export async function GET(request: NextRequest) {
       query = query.where(eq(generatedImages.userId, userId)) as any;
     }
 
-    if (teammateId) {
-      query = query.where(eq(generatedImages.teammateId, teammateId)) as any;
-    }
-
-    const images = await query.limit(limit);
+    // Filter for Imagen-generated diverse partners
+    const images = await query
+      .where(eq(generatedImages.provider, 'imagen'))
+      .limit(limit);
 
     return NextResponse.json({
       success: true,
@@ -189,9 +180,9 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching images:', error);
+    console.error('Error fetching diverse AI partners:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch images' },
+      { success: false, error: 'Failed to fetch diverse AI partners' },
       { status: 500 }
     );
   }

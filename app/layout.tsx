@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   description: 'Generate AI-powered teammates for business, academic, travel, and creative projects. Find your perfect collaboration partner with advanced AI technology.',
   keywords: 'AI teammates, collaboration, business partners, team building, AI generator',
   generator: 'AI Teammate Generator',
+  verification: {
+    google: 'ca-pub-5890845623424973',
+  },
+  other: {
+    'google-adsense-account': 'ca-pub-5890845623424973',
+  },
   openGraph: {
     title: 'AI Teammate Generator',
     description: 'Create perfect collaboration partners with AI',
