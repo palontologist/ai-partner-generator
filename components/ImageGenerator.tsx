@@ -27,6 +27,7 @@ interface GeneratedImage {
   prompt: string;
   status: 'completed' | 'failed';
   error?: string;
+  provider?: 'ideogram' | 'imagen';
 }
 
 export default function ImageGenerator({
@@ -37,7 +38,7 @@ export default function ImageGenerator({
   teammateId,
   category
 }: ImageGeneratorProps) {
-  const [prompt, setPrompt] = useState(defaultPrompt);
+  const [prompt, setPrompt] = useState(defaultPrompt || '');
 
   // Default face generation prompts
   const defaultFacePrompts = {
@@ -50,6 +51,7 @@ export default function ImageGenerator({
   const [style, setStyle] = useState<'realistic' | 'artistic' | 'professional' | 'casual'>('realistic');
   const currentDefaultPrompt = defaultPrompt || defaultFacePrompts[style] || defaultFacePrompts.professional;
   const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '16:10' | '10:16' | '3:2' | '2:3'>('1:1');
+  const [provider, setProvider] = useState<'ideogram' | 'imagen' | 'auto'>('auto');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [copied, setCopied] = useState(false);
@@ -57,6 +59,8 @@ export default function ImageGenerator({
     isValid: boolean;
     missingVars: string[];
     message: string;
+    hasReplicate?: boolean;
+    hasImagen?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -64,7 +68,16 @@ export default function ImageGenerator({
     fetch('/api/health')
       .then(res => res.json())
       .then(data => {
-        if (data.configuration) {
+        if (data.imageGeneration) {
+          setEnvStatus({
+            isValid: data.imageGeneration.available,
+            missingVars: data.configuration?.missingVars || [],
+            message: data.imageGeneration.message || 'Image generation status unknown',
+            hasReplicate: data.imageGeneration.providers?.replicate || false,
+            hasImagen: data.imageGeneration.providers?.imagen || false,
+          });
+        } else if (data.configuration) {
+          // Fallback to old structure
           setEnvStatus({
             isValid: data.configuration.isValid,
             missingVars: data.configuration.missingVars || [],
@@ -82,16 +95,23 @@ export default function ImageGenerator({
       });
   }, []);
 
-  // Update prompt when style changes
+  // Set initial prompt if empty
+  useEffect(() => {
+    if (!prompt) {
+      setPrompt(defaultFacePrompts[style]);
+    }
+  }, []);
+
+  // Update prompt when style changes or if no initial prompt is set
   useEffect(() => {
     const defaultPromptForStyle = defaultFacePrompts[style];
-    if (!prompt || prompt === defaultPromptForStyle) {
+    if (!prompt || prompt === defaultPromptForStyle || prompt === '') {
       setPrompt(defaultPromptForStyle);
     }
   }, [style]);
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) {
+    if (!prompt?.trim()) {
       toast.error('Please enter a prompt for image generation');
       return;
     }
@@ -112,6 +132,7 @@ export default function ImageGenerator({
           userId,
           teammateId,
           category,
+          provider: provider === 'auto' ? undefined : provider,
         }),
       });
 
@@ -123,6 +144,7 @@ export default function ImageGenerator({
           imageUrl: result.data.imageUrl,
           prompt: result.data.prompt,
           status: 'completed',
+          provider: result.data.provider,
         };
         
         setGeneratedImage(imageData);
@@ -257,7 +279,25 @@ export default function ImageGenerator({
 
         {/* Advanced Options */}
         {showAdvancedOptions && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="provider">AI Provider</Label>
+              <Select value={provider} onValueChange={(value: any) => setProvider(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto-select</SelectItem>
+                  {envStatus?.hasReplicate && (
+                    <SelectItem value="ideogram">Ideogram AI</SelectItem>
+                  )}
+                  {envStatus?.hasImagen && (
+                    <SelectItem value="imagen">Google Imagen 4.0</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="style">Style</Label>
               <Select value={style} onValueChange={(value: any) => setStyle(value)}>
@@ -296,7 +336,7 @@ export default function ImageGenerator({
         {/* Generate Button */}
         <Button 
           onClick={handleGenerate} 
-          disabled={isGenerating || !prompt.trim() || (envStatus && !envStatus.isValid)}
+          disabled={isGenerating || !prompt?.trim() || (envStatus && !envStatus.isValid)}
           className="w-full"
           size="lg"
         >
@@ -330,7 +370,14 @@ export default function ImageGenerator({
                   
                   <div className="flex flex-wrap gap-2 justify-between items-start">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground mb-2">Generated prompt:</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="text-sm text-muted-foreground">Generated prompt:</p>
+                        {generatedImage.provider && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                            {generatedImage.provider === 'imagen' ? 'Google Imagen 4.0' : 'Ideogram AI'}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm bg-muted p-2 rounded break-words">
                         {generatedImage.prompt}
                       </p>

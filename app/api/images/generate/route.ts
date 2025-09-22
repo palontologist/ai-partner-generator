@@ -4,7 +4,8 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { generatedImages, imageGenerationHistory } from '@/lib/db/schema';
 import { ideogramService } from '@/lib/services/ideogram';
-import { validateEnvironment } from '@/lib/env-check';
+import { imagenService } from '@/lib/services/imagen';
+import { validateImageGeneration } from '@/lib/env-check';
 import { z } from 'zod';
 
 const generateImageSchema = z.object({
@@ -14,19 +15,20 @@ const generateImageSchema = z.object({
   style: z.enum(['realistic', 'artistic', 'professional', 'casual']).default('realistic'),
   aspectRatio: z.enum(['1:1', '16:10', '10:16', '16:9', '9:16', '3:2', '2:3']).default('1:1'),
   category: z.string().optional(),
+  provider: z.enum(['ideogram', 'imagen']).optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
-    // Check environment configuration
-    const envCheck = validateEnvironment();
-    if (!envCheck.isValid) {
+    // Check image generation configuration
+    const imageGenCheck = validateImageGeneration();
+    if (!imageGenCheck.isValid) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Service not properly configured', 
-          details: `Missing environment variables: ${envCheck.missingVars.join(', ')}`,
-          missingVars: envCheck.missingVars
+          error: 'Image generation service not properly configured', 
+          details: `Missing environment variables: ${imageGenCheck.missingVars.join(', ')}`,
+          missingVars: imageGenCheck.missingVars
         },
         { status: 503 }
       );
@@ -42,22 +44,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { prompt, userId, teammateId, style, aspectRatio, category } = validation.data;
+    const { prompt, userId, teammateId, style, aspectRatio, category, provider } = validation.data;
 
-    console.log('Starting image generation:', { prompt, style, aspectRatio });
+    // Determine which provider to use
+    let selectedProvider = provider;
+    if (!selectedProvider) {
+      // Auto-select based on availability, prefer Ideogram if both available
+      if (imageGenCheck.hasReplicate) {
+        selectedProvider = 'ideogram';
+      } else if (imageGenCheck.hasImagen) {
+        selectedProvider = 'imagen';
+      } else {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'No image generation providers available',
+          },
+          { status: 503 }
+        );
+      }
+    }
+
+    console.log('Starting image generation:', { prompt, style, aspectRatio, provider: selectedProvider });
 
     const startTime = Date.now();
     let generationSuccess = false;
     let errorType: string | null = null;
 
     try {
-      // Generate the image using Ideogram service
-      const result = await ideogramService.generateImage({
-        prompt,
-        aspect_ratio: aspectRatio,
-        style_type: style === 'realistic' ? 'Realistic' : 'General',
-        magic_prompt_option: 'On',
-      });
+      let result: any;
+
+      if (selectedProvider === 'imagen') {
+        // Use Imagen service
+        result = await imagenService.generateImage({
+          prompt,
+          aspect_ratio: aspectRatio,
+          style_type: style,
+          image_size: '1K',
+          number_of_images: 1,
+          person_generation: 'ALLOW_ALL',
+        });
+      } else {
+        // Use Ideogram service (default)
+        result = await ideogramService.generateImage({
+          prompt,
+          aspect_ratio: aspectRatio,
+          style_type: style === 'realistic' ? 'Realistic' : 'General',
+          magic_prompt_option: 'On',
+        });
+      }
 
       generationSuccess = result.status === 'completed';
       
@@ -75,8 +110,10 @@ export async function POST(request: NextRequest) {
           teammateId: teammateId || null,
           prompt: result.prompt,
           imageUrl: result.imageUrl,
-          replicateId: result.replicateId,
-          model: 'ideogram-ai/ideogram-v3-turbo',
+          replicateId: result.replicateId || result.id,
+          model: selectedProvider === 'imagen' 
+            ? 'google/imagen-4.0-generate-001' 
+            : 'ideogram-ai/ideogram-v3-turbo',
           parameters: JSON.stringify(result.parameters),
           status: 'completed',
         });
@@ -102,7 +139,10 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: generationSuccess,
-        data: result,
+        data: {
+          ...result,
+          provider: selectedProvider,
+        },
         message: generationSuccess ? 'Image generated successfully' : 'Image generation failed',
       });
 
