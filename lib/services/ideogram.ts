@@ -1,6 +1,6 @@
 import Replicate from 'replicate';
 import { v4 as uuidv4 } from 'uuid';
-import { enhanceFacePrompt, generateCategoryFacePrompt, FaceGenerationOptions } from './prompt-enhancers';
+import { enhanceFacePrompt, generateCategoryFacePrompt, FaceGenerationOptions } from '../prompt-enhancers';
 
 export interface IdeogramGenerationOptions {
   prompt: string;
