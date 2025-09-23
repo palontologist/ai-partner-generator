@@ -1,4 +1,4 @@
-import { Client } from "@gradio/client";
+import OpenAI from "openai";
 
 export interface QwenGenerationOptions {
   prompt: string;
@@ -20,26 +20,38 @@ export interface GeneratedImageResult {
 }
 
 class QwenService {
-  private client: Client | null = null;
+  private client: OpenAI | null = null;
 
-  private async getClient() {
+  private getClient() {
     if (!this.client) {
-      this.client = await Client.connect("Qwen/Qwen-Image-Edit");
+      if (!process.env.DASHSCOPE_API_KEY) {
+        throw new Error('DASHSCOPE_API_KEY is not configured');
+      }
+
+      this.client = new OpenAI({
+        apiKey: process.env.DASHSCOPE_API_KEY,
+        baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+      });
     }
     return this.client;
   }
 
   /**
-   * Generate an image using Qwen Image Edit
+   * Generate an image using DashScope Qwen Image Generation
    */
   async generateImage(options: QwenGenerationOptions): Promise<GeneratedImageResult> {
     const id = crypto.randomUUID();
 
     try {
-      // Fetch example image if no image provided
-      const image = options.image || await this.fetchExampleImage();
+      const client = this.getClient();
 
-      console.log('Generating image with Qwen Image Edit:', {
+      // Convert image to base64 if provided
+      let imageBase64 = '';
+      if (options.image) {
+        imageBase64 = await this.blobToBase64(options.image);
+      }
+
+      console.log('Generating image with DashScope:', {
         prompt: options.prompt,
         seed: options.seed,
         randomize_seed: options.randomize_seed,
@@ -48,50 +60,103 @@ class QwenService {
         rewrite_prompt: options.rewrite_prompt
       });
 
-      const client = await this.getClient();
-      const result = await client.predict("/infer", {
-        image: image,
-        prompt: options.prompt,
-        seed: options.seed || 0,
-        randomize_seed: options.randomize_seed || true,
-        true_guidance_scale: options.true_guidance_scale || 1,
-        num_inference_steps: options.num_inference_steps || 1,
-        rewrite_prompt: options.rewrite_prompt || true,
-      });
+      // Try to use the images.generate endpoint first (if supported)
+      try {
+        const response = await client.images.generate({
+          model: "wanx-image-generation", // DashScope image generation model
+          prompt: options.prompt,
+          n: 1,
+          size: "1024x1024",
+          response_format: "url"
+        });
 
-      console.log('Qwen result:', result);
+        const imageUrl = response.data[0]?.url;
+        if (!imageUrl) {
+          throw new Error('No image URL returned from DashScope API');
+        }
 
-      // Extract image URL from result
-      // The result format may vary, so we need to handle different response structures
-      let imageUrl = '';
+        return {
+          id,
+          imageUrl,
+          prompt: options.prompt,
+          parameters: options,
+          status: 'completed',
+        };
+      } catch (imageGenError) {
+        console.warn('Image generation endpoint not available, trying chat completion with vision model:', imageGenError);
 
-      if (result.data && typeof result.data === 'object') {
-        // Try to extract image URL from various possible response formats
-        if (Array.isArray(result.data)) {
-          imageUrl = result.data[0] as string;
-        } else if (result.data && typeof result.data === 'object' && 'url' in result.data) {
-          imageUrl = (result.data as any).url;
-        } else if (result.data && typeof result.data === 'object' && 'data' in result.data) {
-          imageUrl = (result.data as any).data;
-        } else if (typeof result.data === 'string') {
-          imageUrl = result.data;
+        // Fallback to using chat completion with vision model for image editing
+        if (options.image) {
+          const response = await client.chat.completions.create({
+            model: "qwen-vl-plus", // Vision-language model for image editing
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: options.prompt
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:image/png;base64,${imageBase64}`,
+                      detail: "high"
+                    }
+                  }
+                ]
+              }
+            ],
+            max_tokens: 1000
+          });
+
+          // Extract image description or analysis from response
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new Error('No content returned from vision model');
+          }
+
+          // For now, we'll return a placeholder since the vision model returns text, not images
+          // In a real implementation, you might need to use a different service for image generation
+          return {
+            id,
+            imageUrl: '', // Vision model doesn't generate images
+            prompt: options.prompt,
+            parameters: options,
+            status: 'failed',
+            error: 'Vision model returned text analysis instead of generated image'
+          };
+        } else {
+          // Text-to-image generation using chat completion
+          const response = await client.chat.completions.create({
+            model: "qwen-plus",
+            messages: [
+              {
+                role: "user",
+                content: `Generate a detailed image description for: ${options.prompt}. Please provide a vivid, detailed description that could be used to create an image.`
+              }
+            ],
+            max_tokens: 500
+          });
+
+          const description = response.choices[0]?.message?.content;
+          if (!description) {
+            throw new Error('No description returned from model');
+          }
+
+          return {
+            id,
+            imageUrl: '', // Chat model doesn't generate images
+            prompt: options.prompt,
+            parameters: options,
+            status: 'failed',
+            error: 'Chat model returned text description instead of generated image'
+          };
         }
       }
 
-      if (!imageUrl) {
-        throw new Error('No image URL returned from Qwen API');
-      }
-
-      return {
-        id,
-        imageUrl,
-        prompt: options.prompt,
-        parameters: options,
-        status: 'completed',
-      };
-
     } catch (error) {
-      console.error('Error generating image with Qwen:', error);
+      console.error('Error generating image with DashScope:', error);
 
       return {
         id,
@@ -105,14 +170,20 @@ class QwenService {
   }
 
   /**
-   * Fetch example image from the test URL
+   * Convert Blob to base64 string
    */
-  private async fetchExampleImage(): Promise<Blob> {
-    const response = await fetch("https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png");
-    if (!response.ok) {
-      throw new Error('Failed to fetch example image');
-    }
-    return await response.blob();
+  private async blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data:image/png;base64, prefix
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   }
 
   /**
@@ -180,10 +251,16 @@ class QwenService {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const client = await this.getClient();
-      return !!client;
+      const client = this.getClient();
+      // Try a simple chat completion to test the API
+      const response = await client.chat.completions.create({
+        model: "qwen-plus",
+        messages: [{ role: "user", content: "Hello" }],
+        max_tokens: 10
+      });
+      return !!response;
     } catch (error) {
-      console.error('Qwen API health check failed:', error);
+      console.error('DashScope API health check failed:', error);
       return false;
     }
   }

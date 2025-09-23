@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
           prompt: result.prompt,
           imageUrl: result.imageUrl,
           replicateId: result.id, // Using the generation ID as replicateId for compatibility
-          model: 'Qwen/Qwen-Image-Edit',
+          model: 'DashScope/wanx-image-generation',
           parameters: JSON.stringify(result.parameters),
           status: 'completed',
         });
