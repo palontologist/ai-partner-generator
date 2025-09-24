@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { generatedImages, imageGenerationHistory } from '@/lib/db/schema';
-import { ideogramService } from '@/lib/services/ideogram';
+import { qwenService } from '@/lib/services/qwen';
 import { validateEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
@@ -12,7 +12,11 @@ const generateImageSchema = z.object({
   userId: z.string().optional(),
   teammateId: z.string().optional(),
   style: z.enum(['realistic', 'artistic', 'professional', 'casual']).default('realistic'),
-  aspectRatio: z.enum(['1:1', '16:10', '10:16', '16:9', '9:16', '3:2', '2:3']).default('1:1'),
+  seed: z.number().optional(),
+  randomize_seed: z.boolean().default(true),
+  true_guidance_scale: z.number().default(1),
+  num_inference_steps: z.number().default(1),
+  rewrite_prompt: z.boolean().default(true),
   category: z.string().optional(),
 });
 
@@ -42,21 +46,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { prompt, userId, teammateId, style, aspectRatio, category } = validation.data;
+    const { prompt, userId, teammateId, style, seed, randomize_seed, true_guidance_scale, num_inference_steps, rewrite_prompt, category } = validation.data;
 
-    console.log('Starting image generation:', { prompt, style, aspectRatio });
+    console.log('Starting image generation:', { prompt, style, seed, randomize_seed, true_guidance_scale, num_inference_steps, rewrite_prompt });
 
     const startTime = Date.now();
     let generationSuccess = false;
     let errorType: string | null = null;
 
     try {
-      // Generate the image using Ideogram service
-      const result = await ideogramService.generateImage({
+      // Generate the image using Qwen service
+      const result = await qwenService.generateImage({
         prompt,
-        aspect_ratio: aspectRatio,
-        style_type: style === 'realistic' ? 'Realistic' : 'General',
-        magic_prompt_option: 'On',
+        seed,
+        randomize_seed,
+        true_guidance_scale,
+        num_inference_steps,
+        rewrite_prompt,
       });
 
       generationSuccess = result.status === 'completed';
@@ -75,8 +81,8 @@ export async function POST(request: NextRequest) {
           teammateId: teammateId || null,
           prompt: result.prompt,
           imageUrl: result.imageUrl,
-          replicateId: result.replicateId,
-          model: 'ideogram-ai/ideogram-v3-turbo',
+          replicateId: result.id, // Using the generation ID as replicateId for compatibility
+          model: 'DashScope/wanx-image-generation',
           parameters: JSON.stringify(result.parameters),
           status: 'completed',
         });

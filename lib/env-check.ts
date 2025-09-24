@@ -7,8 +7,8 @@ export function isDatabaseConfigured(): boolean {
   return !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
 }
 
-export function isReplicateConfigured(): boolean {
-  return !!process.env.REPLICATE_API_TOKEN;
+export function isDashScopeConfigured(): boolean {
+  return !!process.env.DASHSCOPE_API_KEY;
 }
 
 export function isProductionBuild(): boolean {
@@ -17,15 +17,15 @@ export function isProductionBuild(): boolean {
 
 export function validateEnvironment() {
   const missing: string[] = [];
-  
-  if (!process.env.REPLICATE_API_TOKEN) {
-    missing.push('REPLICATE_API_TOKEN');
+
+  if (!process.env.DASHSCOPE_API_KEY) {
+    missing.push('DASHSCOPE_API_KEY');
   }
-  
+
   if (!process.env.TURSO_DATABASE_URL) {
     missing.push('TURSO_DATABASE_URL');
   }
-  
+
   if (!process.env.TURSO_AUTH_TOKEN) {
     missing.push('TURSO_AUTH_TOKEN');
   }

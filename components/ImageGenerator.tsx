@@ -47,9 +47,13 @@ export default function ImageGenerator({
     executive: 'Corporate executive portrait, office setting, professional attire, confident and experienced, clean background, studio lighting'
   };
 
-  const [style, setStyle] = useState<'realistic' | 'artistic' | 'professional' | 'casual'>('realistic');
+  const [style, setStyle] = useState<'professional' | 'casual' | 'creative' | 'executive'>('professional');
   const currentDefaultPrompt = defaultPrompt || defaultFacePrompts[style] || defaultFacePrompts.professional;
-  const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '16:10' | '10:16' | '3:2' | '2:3'>('1:1');
+  const [seed, setSeed] = useState<number | undefined>(undefined);
+  const [randomizeSeed, setRandomizeSeed] = useState(true);
+  const [guidanceScale, setGuidanceScale] = useState(1);
+  const [inferenceSteps, setInferenceSteps] = useState(20);
+  const [rewritePrompt, setRewritePrompt] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [copied, setCopied] = useState(false);
@@ -108,7 +112,11 @@ export default function ImageGenerator({
         body: JSON.stringify({
           prompt: prompt.trim(),
           style,
-          aspectRatio,
+          seed,
+          randomize_seed: randomizeSeed,
+          true_guidance_scale: guidanceScale,
+          num_inference_steps: inferenceSteps,
+          rewrite_prompt: rewritePrompt,
           userId,
           teammateId,
           category,
@@ -257,46 +265,95 @@ export default function ImageGenerator({
 
         {/* Advanced Options */}
         {showAdvancedOptions && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="style">Style</Label>
-              <Select value={style} onValueChange={(value: any) => setStyle(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select style" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="realistic">Realistic</SelectItem>
-                  <SelectItem value="artistic">Artistic</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="casual">Casual</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-4">
+            {/* Style Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="style">Style</Label>
+                <Select value={style} onValueChange={(value: any) => setStyle(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select style" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="realistic">Realistic</SelectItem>
+                    <SelectItem value="artistic">Artistic</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="casual">Casual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="seed">Seed (optional)</Label>
+                <Input
+                  id="seed"
+                  type="number"
+                  placeholder="Random seed"
+                  value={seed || ''}
+                  onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value) : undefined)}
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="aspect-ratio">Aspect Ratio</Label>
-              <Select value={aspectRatio} onValueChange={(value: any) => setAspectRatio(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select aspect ratio" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1:1">Square (1:1)</SelectItem>
-                  <SelectItem value="16:9">Landscape (16:9)</SelectItem>
-                  <SelectItem value="9:16">Portrait (9:16)</SelectItem>
-                  <SelectItem value="16:10">Wide (16:10)</SelectItem>
-                  <SelectItem value="10:16">Tall (10:16)</SelectItem>
-                  <SelectItem value="3:2">Classic (3:2)</SelectItem>
-                  <SelectItem value="2:3">Classic Portrait (2:3)</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Generation Parameters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="guidance-scale">Guidance Scale</Label>
+                <Input
+                  id="guidance-scale"
+                  type="number"
+                  min="0.1"
+                  max="10"
+                  step="0.1"
+                  value={guidanceScale}
+                  onChange={(e) => setGuidanceScale(parseFloat(e.target.value) || 1)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="inference-steps">Inference Steps</Label>
+                <Input
+                  id="inference-steps"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={inferenceSteps}
+                  onChange={(e) => setInferenceSteps(parseInt(e.target.value) || 20)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="randomize-seed">Random Seed</Label>
+                <Select value={randomizeSeed.toString()} onValueChange={(value) => setRandomizeSeed(value === 'true')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Random</SelectItem>
+                    <SelectItem value="false">Fixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Additional Options */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="rewrite-prompt"
+                checked={rewritePrompt}
+                onChange={(e) => setRewritePrompt(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="rewrite-prompt">Rewrite prompt automatically</Label>
             </div>
           </div>
         )}
 
         {/* Generate Button */}
-        <Button 
-          onClick={handleGenerate} 
-          disabled={isGenerating || !prompt.trim() || (envStatus && !envStatus.isValid)}
+        <Button
+          onClick={handleGenerate}
+          disabled={isGenerating || !prompt.trim() || (envStatus ? !envStatus.isValid : false)}
           className="w-full"
           size="lg"
         >
@@ -359,9 +416,13 @@ export default function ImageGenerator({
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary">Style: {style}</Badge>
-                    <Badge variant="secondary">Aspect: {aspectRatio}</Badge>
+                    {seed && <Badge variant="secondary">Seed: {seed}</Badge>}
+                    <Badge variant="secondary">Guidance: {guidanceScale}</Badge>
+                    <Badge variant="secondary">Steps: {inferenceSteps}</Badge>
+                    {randomizeSeed && <Badge variant="secondary">Random Seed</Badge>}
+                    {rewritePrompt && <Badge variant="secondary">Auto Rewrite</Badge>}
                   </div>
                 </div>
               ) : (

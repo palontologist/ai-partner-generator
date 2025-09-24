@@ -35,8 +35,8 @@ export function enhanceFacePrompt(
     mood = 'professional',
     lighting = 'studio',
     background = 'clean',
-    cameraSettings = true,
-    facialDetails = true
+    cameraSettings: useCameraSettings = true,
+    facialDetails: useFacialDetails = true
   } = options;
 
   const enhancements: string[] = [];
@@ -116,11 +116,11 @@ export function enhanceFacePrompt(
 
   prompt += `, ${moodExpressions[mood]}, ${lightingOptions[lighting]}, ${backgroundOptions[background]}`;
 
-  if (facialDetails) {
+  if (useFacialDetails) {
     prompt += `, ${facialDetails}`;
   }
 
-  if (cameraSettings) {
+  if (useCameraSettings) {
     prompt += `, ${cameraSettings}`;
   }
 
