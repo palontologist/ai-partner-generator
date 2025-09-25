@@ -102,21 +102,21 @@ class ImagenService {
 
   /**
    * Generate an image using Google's Imagen model
-   * Note: Currently using a placeholder since the Imagen API structure is different
-   * Falls back to enhanced Ideogram generation with diversity features
    */
   async generateImage(options: ImagenGenerationOptions): Promise<GeneratedImageResult> {
     const id = uuidv4();
     
     try {
-      console.log('Imagen API not yet fully implemented, using enhanced diverse prompting with Ideogram...');
+      console.log('Generating image with Google Imagen API...');
       
-      // For now, we'll create a highly diverse prompt and use it as a fallback
-      // This maintains the diversity features while we work on the actual Imagen integration
-      
+      // Import the Google GenAI library
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({
+        apiKey: this.getApiKey()
+      });
+
+      // Create enhanced prompt with diversity features
       const characteristics = generateDiverseHumanCharacteristics();
-      
-      // Create an enhanced prompt with diversity
       const enhancedPrompt = [
         options.prompt,
         `diverse ${characteristics.ethnicity} person`,
@@ -132,58 +132,44 @@ class ImagenService {
 
       console.log('Using enhanced diverse prompt:', enhancedPrompt);
 
-      // Return a successful result with enhanced prompt for now
-      // In production, you would integrate with the actual Imagen API here
+      // Configure the generation parameters
+      const config = {
+        numberOfImages: options.number_of_images || 1,
+        outputMimeType: options.output_mime_type || "image/jpeg",
+        personGeneration: options.person_generation || "ALLOW_ALL",
+        aspectRatio: options.aspect_ratio || "1:1",
+        imageSize: options.image_size || "1K",
+        ...(options.seed && { seed: options.seed }),
+      };
+
+      console.log('Generating with config:', config);
+
+      // Generate the image using Google GenAI
+      const response = await ai.models.generateImages({
+        model: 'imagen-4.0-generate-001',
+        prompt: enhancedPrompt,
+        config,
+      });
+
+      if (!response.generatedImages || response.generatedImages.length === 0) {
+        throw new Error("No images generated");
+      }
+
+      // Process the first generated image
+      const generatedImage = response.generatedImages[0];
+      const imageUrl = await this.processGeneratedImage(generatedImage, id);
+      
       return {
         id,
-        imageUrl: '/placeholder-diverse-face.jpg', // Placeholder until real API works
+        imageUrl,
         prompt: enhancedPrompt,
         replicateId: id,
         parameters: { ...options, seed: characteristics.seed },
         status: 'completed',
       };
 
-      /* When the correct Imagen API becomes available, replace above with:
-      
-      const { GoogleGenAI } = await import('@google/genai');
-      const client = new GoogleGenAI({
-        apiKey: this.getApiKey()
-      });
-
-      const config = {
-        number_of_images: options.number_of_images || 1,
-        output_mime_type: options.output_mime_type || "image/jpeg",
-        person_generation: options.person_generation || "ALLOW_ALL",
-        aspect_ratio: options.aspect_ratio || "1:1",
-        image_size: options.image_size || "1K",
-        seed: seed,
-      };
-
-      const result = await client.models.generate_images({
-        model: "models/imagen-4.0-generate-001",
-        prompt: enhancedPrompt,
-        config,
-      });
-
-      if (!result.generated_images || result.generated_images.length === 0) {
-        throw new Error("No images generated");
-      }
-
-      const generatedImage = result.generated_images[0];
-      const imageUrl = await this.processGeneratedImage(generatedImage, id);
-
-      return {
-        id,
-        imageUrl,
-        prompt: enhancedPrompt,
-        replicateId: id,
-        parameters: { ...options, seed },
-        status: 'completed',
-      };
-      */
-
     } catch (error) {
-      console.error('Error with Imagen integration:', error);
+      console.error('Error generating image with Imagen:', error);
       
       return {
         id,
@@ -192,49 +178,43 @@ class ImagenService {
         replicateId: id,
         parameters: options,
         status: 'failed',
-        error: error instanceof Error ? error.message : 'Imagen API integration in progress',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
-  }
-
-  /**
-   * Process the generated image from Imagen
-   * In a real implementation, you'd upload this to cloud storage
+  }  /**
+   * Process the generated image from Google GenAI Imagen
+   * Converts image bytes to file and returns URL
    */
   private async processGeneratedImage(generatedImage: any, imageId: string): Promise<string> {
     try {
-      // Save the generated image to a file and return a URL
-      // This follows your example: generated_image.image.save(f"generated_image_{n}.jpg")
-      if (generatedImage.image) {
-        // In a production environment, you'd upload to cloud storage
-        // For now, we'll save locally and return a path/URL
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        
-        // Create a filename based on the image ID
-        const filename = `generated_image_${imageId}.jpg`;
-        const filepath = path.join(process.cwd(), 'public', 'generated', filename);
-        
-        // Ensure the directory exists
-        await fs.mkdir(path.dirname(filepath), { recursive: true });
-        
-        // Save the image (assuming it's a buffer or base64)
-        if (typeof generatedImage.image === 'string') {
-          // If it's base64, decode and save
-          const buffer = Buffer.from(generatedImage.image, 'base64');
-          await fs.writeFile(filepath, buffer);
-        } else {
-          // If it's already a buffer, save directly
-          await fs.writeFile(filepath, generatedImage.image);
-        }
-        
-        // Return the public URL
-        return `/generated/${filename}`;
+      // Get image bytes from the Google GenAI format
+      if (!generatedImage.image || !generatedImage.image.imageBytes) {
+        throw new Error('No image data found in generated result');
       }
-      throw new Error('No image data in generated image');
+
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      
+      // Get image bytes and convert from base64
+      const imgBytes = generatedImage.image.imageBytes;
+      const buffer = Buffer.from(imgBytes, "base64");
+      
+      // Create filename and path
+      const filename = `imagen-${imageId}.png`;
+      const filepath = path.join(process.cwd(), 'public', 'generated', filename);
+      
+      // Ensure the directory exists
+      await fs.mkdir(path.dirname(filepath), { recursive: true });
+      
+      // Save the image file
+      await fs.writeFile(filepath, buffer);
+      
+      // Return the public URL
+      return `/generated/${filename}`;
+      
     } catch (error) {
       console.error('Error processing generated image:', error);
-      throw error;
+      throw new Error(`Failed to process generated image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -558,16 +538,23 @@ class ImagenService {
     });
   }
 
+
+
   /**
    * Check if API is configured and working
    */
   async healthCheck(): Promise<boolean> {
     try {
-      // Try to get the API key to verify it's configured
-      this.getApiKey();
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({
+        apiKey: this.getApiKey()
+      });
+      
+      // Try to list models to verify API connectivity
+      // For now, just check if we can create the client
       return true;
     } catch (error) {
-      console.error('Imagen API health check failed:', error);
+      console.error('Google GenAI health check failed:', error);
       return false;
     }
   }
