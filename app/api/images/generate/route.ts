@@ -6,6 +6,7 @@ import { generatedImages, imageGenerationHistory } from '@/lib/db/schema';
 import { ideogramService } from '@/lib/services/ideogram';
 import { imagenService } from '@/lib/services/imagen';
 import { qwenService } from '@/lib/services/qwen';
+import { geminiService } from '@/lib/services/gemini';
 import { validateImageGenerationEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
@@ -20,7 +21,7 @@ const generateImageSchema = z.object({
   num_inference_steps: z.number().default(1),
   rewrite_prompt: z.boolean().default(true),
   category: z.string().optional(),
-  provider: z.enum(['ideogram', 'imagen', 'qwen']).default('ideogram'),
+  provider: z.enum(['ideogram', 'imagen', 'qwen', 'gemini']).default('ideogram'),
   aspectRatio: z.enum(['1:1', '16:10', '10:16', '16:9', '9:16', '3:2', '2:3']).default('1:1'),
 });
 
@@ -77,6 +78,13 @@ export async function POST(request: NextRequest) {
           num_inference_steps,
           rewrite_prompt,
         });
+      } else if (provider === 'gemini') {
+        result = await geminiService.generateImage({
+          prompt,
+          aspect_ratio: aspectRatio,
+          style_type: style,
+          number_of_images: 1,
+        });
       } else {
         // Default to Ideogram
         result = await ideogramService.generateImage({
@@ -95,29 +103,9 @@ export async function POST(request: NextRequest) {
 
       // Store the generated image in the database (with better error handling)
       if (result.status === 'completed') {
-<<<<<<< Updated upstream
-        const imageId = uuidv4();
-        
-        await db.insert(generatedImages).values({
-          id: imageId,
-          userId: userId || null,
-          teammateId: teammateId || null,
-          prompt: result.prompt,
-          imageUrl: result.imageUrl,
-          replicateId: result.replicateId || result.id, // Using the generation ID as replicateId for compatibility
-          model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 
-                 provider === 'qwen' ? 'DashScope/wanx-image-generation' : 
-                 'ideogram-ai/ideogram-v3-turbo',
-          provider: provider,
-          parameters: JSON.stringify(result.parameters),
-          status: 'completed',
-        });
-=======
-              // Store the generated image in the database (with better error handling)
-      if (result.status === 'completed') {
         try {
           const imageId = uuidv4();
-          
+
           await db.insert(generatedImages).values({
             id: imageId,
             userId: (userId && userId !== 'demo-user') ? userId : null,
@@ -125,21 +113,14 @@ export async function POST(request: NextRequest) {
             prompt: result.prompt,
             imageUrl: result.imageUrl,
             replicateId: result.replicateId || result.id, // Using the generation ID as replicateId for compatibility
-            model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 
-                   provider === 'qwen' ? 'DashScope/qwen-image' : 
+            model: provider === 'imagen' ? 'imagen-4.0-generate-001' :
+                   provider === 'qwen' ? 'DashScope/qwen-image' :
+                   provider === 'gemini' ? 'google/gemini-2.5-flash-image-preview' :
                    'ideogram-ai/ideogram-v3-turbo',
             provider: provider,
             parameters: JSON.stringify(result.parameters),
             status: 'completed',
           });
-
-          console.log('Image generated and stored successfully:', imageId);
-        } catch (dbError) {
-          console.warn('Failed to store image in database, but generation was successful:', dbError);
-          // Don't fail the whole request if database storage fails
-        }
-      }
->>>>>>> Stashed changes
 
           console.log('Image generated and stored successfully:', imageId);
         } catch (dbError) {
