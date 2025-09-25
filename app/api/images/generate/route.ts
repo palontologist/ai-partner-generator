@@ -95,26 +95,6 @@ export async function POST(request: NextRequest) {
 
       // Store the generated image in the database (with better error handling)
       if (result.status === 'completed') {
-<<<<<<< Updated upstream
-        const imageId = uuidv4();
-        
-        await db.insert(generatedImages).values({
-          id: imageId,
-          userId: userId || null,
-          teammateId: teammateId || null,
-          prompt: result.prompt,
-          imageUrl: result.imageUrl,
-          replicateId: result.replicateId || result.id, // Using the generation ID as replicateId for compatibility
-          model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 
-                 provider === 'qwen' ? 'DashScope/wanx-image-generation' : 
-                 'ideogram-ai/ideogram-v3-turbo',
-          provider: provider,
-          parameters: JSON.stringify(result.parameters),
-          status: 'completed',
-        });
-=======
-              // Store the generated image in the database (with better error handling)
-      if (result.status === 'completed') {
         try {
           const imageId = uuidv4();
           
@@ -132,14 +112,6 @@ export async function POST(request: NextRequest) {
             parameters: JSON.stringify(result.parameters),
             status: 'completed',
           });
-
-          console.log('Image generated and stored successfully:', imageId);
-        } catch (dbError) {
-          console.warn('Failed to store image in database, but generation was successful:', dbError);
-          // Don't fail the whole request if database storage fails
-        }
-      }
->>>>>>> Stashed changes
 
           console.log('Image generated and stored successfully:', imageId);
         } catch (dbError) {
