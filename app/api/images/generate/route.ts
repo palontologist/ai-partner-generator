@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
     const { prompt, userId, teammateId, style, aspectRatio, seed, randomize_seed, true_guidance_scale, num_inference_steps, rewrite_prompt, category, provider } = validation.data;
 
     // Check environment configuration for the selected provider
-    const envCheck = validateImageGenerationEnvironment(provider === 'qwen' ? 'ideogram' : provider);
-    if (!envCheck.isValid && provider !== 'qwen') {
+    const envCheck = validateImageGenerationEnvironment(provider);
+    if (!envCheck.isValid) {
       return NextResponse.json(
         { 
           success: false, 

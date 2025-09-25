@@ -40,7 +40,7 @@ export function validateEnvironment() {
   };
 }
 
-export function validateImageGenerationEnvironment(provider: 'ideogram' | 'imagen' = 'ideogram') {
+export function validateImageGenerationEnvironment(provider: 'ideogram' | 'imagen' | 'qwen' = 'ideogram') {
   const missing: string[] = [];
   
   if (provider === 'ideogram' && !process.env.REPLICATE_API_TOKEN) {
@@ -49,6 +49,10 @@ export function validateImageGenerationEnvironment(provider: 'ideogram' | 'image
   
   if (provider === 'imagen' && !process.env.GEMINI_API_KEY) {
     missing.push('GEMINI_API_KEY');
+  }
+  
+  if (provider === 'qwen' && !process.env.DASHSCOPE_API_KEY) {
+    missing.push('DASHSCOPE_API_KEY');
   }
   
   // Database is always required
