@@ -36,9 +36,8 @@ export const generatedImages = sqliteTable('generated_images', {
   teammateId: text('teammate_id').references(() => teammates.id, { onDelete: 'cascade' }),
   prompt: text('prompt').notNull(),
   imageUrl: text('image_url').notNull(),
-  replicateId: text('replicate_id'), // Replicate prediction ID or external service ID
+  replicateId: text('replicate_id'), // Replicate prediction ID
   model: text('model').default('ideogram-ai/ideogram-v3-turbo').notNull(),
-  provider: text('provider').default('ideogram').notNull(), // ideogram, imagen, etc.
   parameters: text('parameters'), // JSON string of generation parameters
   status: text('status').default('pending').notNull(), // pending, completed, failed
   errorMessage: text('error_message'),
@@ -51,7 +50,6 @@ export const userPreferences = sqliteTable('user_preferences', {
   id: text('id').primaryKey(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).unique(),
   preferredImageStyle: text('preferred_image_style').default('realistic'),
-  preferredProvider: text('preferred_provider').default('ideogram'), // ideogram, imagen
   defaultCategory: text('default_category'),
   autoGenerateImages: integer('auto_generate_images', { mode: 'boolean' }).default(true),
   imageQuality: text('image_quality').default('standard'), // standard, high
@@ -66,7 +64,6 @@ export const imageGenerationHistory = sqliteTable('image_generation_history', {
   prompt: text('prompt').notNull(),
   category: text('category'),
   style: text('style'),
-  provider: text('provider').default('ideogram').notNull(), // ideogram, imagen
   generationTime: integer('generation_time'), // Time taken in seconds
   success: integer('success', { mode: 'boolean' }).notNull(),
   errorType: text('error_type'),
