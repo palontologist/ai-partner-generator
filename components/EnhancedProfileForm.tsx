@@ -229,8 +229,8 @@ export default function EnhancedProfileForm({
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
               <CategorySelector
-                selectedCategory={formData.category}
-                onCategoryChange={(category) => handleInputChange('category', category)}
+                selected={formData.category}
+                onSelect={(category) => handleInputChange('category', category)}
               />
             </div>
 

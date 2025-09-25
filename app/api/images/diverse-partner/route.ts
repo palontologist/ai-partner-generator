@@ -65,47 +65,57 @@ export async function POST(request: NextRequest) {
         errorType = result.error || 'Unknown generation error';
       }
 
-      // Store the generated image in the database
+      // Store the generated image in the database (with better error handling)
       if (result.status === 'completed') {
-        const imageId = uuidv4();
-        
-        await db.insert(generatedImages).values({
-          id: imageId,
-          userId: userId || null,
-          teammateId: teammateId || null,
-          prompt: result.prompt,
-          imageUrl: result.imageUrl,
-          replicateId: result.replicateId,
-          model: 'imagen-4.0-generate-001',
-          provider: 'imagen',
-          parameters: JSON.stringify({
-            ...result.parameters,
-            category,
-            description,
-            style,
-            gender
-          }),
-          status: 'completed',
-        });
+        try {
+          const imageId = uuidv4();
+          
+          await db.insert(generatedImages).values({
+            id: imageId,
+            userId: (userId && userId !== 'demo-user') ? userId : null,
+            teammateId: teammateId || null,
+            prompt: result.prompt,
+            imageUrl: result.imageUrl,
+            replicateId: result.replicateId,
+            model: 'imagen-4.0-generate-001',
+            provider: 'imagen',
+            parameters: JSON.stringify({
+              ...result.parameters,
+              category,
+              description,
+              style,
+              gender
+            }),
+            status: 'completed',
+          });
 
-        console.log('Diverse AI partner generated and stored successfully:', imageId);
+          console.log('Diverse AI partner generated and stored successfully:', imageId);
+        } catch (dbError) {
+          console.warn('Failed to store diverse partner in database, but generation was successful:', dbError);
+          // Don't fail the whole request if database storage fails
+        }
       }
 
-      // Log generation history
-      if (userId) {
-        const generationTime = Math.round((Date.now() - startTime) / 1000);
-        
-        await db.insert(imageGenerationHistory).values({
-          id: uuidv4(),
-          userId,
-          prompt: result.prompt,
-          category: category,
-          style,
-          provider: 'imagen',
-          generationTime,
-          success: generationSuccess,
-          errorType,
-        });
+      // Log generation history (only if userId is provided and valid)
+      if (userId && userId !== 'demo-user') {
+        try {
+          const generationTime = Math.round((Date.now() - startTime) / 1000);
+          
+          await db.insert(imageGenerationHistory).values({
+            id: uuidv4(),
+            userId,
+            prompt: result.prompt,
+            category: category,
+            style,
+            provider: 'imagen',
+            generationTime,
+            success: generationSuccess,
+            errorType,
+          });
+        } catch (historyError) {
+          console.warn('Failed to log diverse generation history:', historyError);
+          // Don't fail the whole request if history logging fails
+        }
       }
 
       return NextResponse.json({
@@ -120,21 +130,26 @@ export async function POST(request: NextRequest) {
       errorType = 'service_error';
       generationSuccess = false;
 
-      // Log failed generation
-      if (userId) {
-        const generationTime = Math.round((Date.now() - startTime) / 1000);
-        
-        await db.insert(imageGenerationHistory).values({
-          id: uuidv4(),
-          userId,
-          prompt: `Diverse ${category} AI partner`,
-          category: category,
-          style,
-          provider: 'imagen',
-          generationTime,
-          success: false,
-          errorType: 'service_error',
-        });
+      // Log failed generation (only if userId is provided and valid)
+      if (userId && userId !== 'demo-user') {
+        try {
+          const generationTime = Math.round((Date.now() - startTime) / 1000);
+          
+          await db.insert(imageGenerationHistory).values({
+            id: uuidv4(),
+            userId,
+            prompt: `Diverse ${category} AI partner`,
+            category: category,
+            style,
+            provider: 'imagen',
+            generationTime,
+            success: false,
+            errorType: 'service_error',
+          });
+        } catch (historyError) {
+          console.warn('Failed to log failed diverse generation history:', historyError);
+          // Don't fail the whole request if history logging fails
+        }
       }
 
       return NextResponse.json(

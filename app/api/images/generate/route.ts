@@ -93,8 +93,9 @@ export async function POST(request: NextRequest) {
         errorType = result.error || 'Unknown generation error';
       }
 
-      // Store the generated image in the database
+      // Store the generated image in the database (with better error handling)
       if (result.status === 'completed') {
+<<<<<<< Updated upstream
         const imageId = uuidv4();
         
         await db.insert(generatedImages).values({
@@ -111,25 +112,62 @@ export async function POST(request: NextRequest) {
           parameters: JSON.stringify(result.parameters),
           status: 'completed',
         });
+=======
+              // Store the generated image in the database (with better error handling)
+      if (result.status === 'completed') {
+        try {
+          const imageId = uuidv4();
+          
+          await db.insert(generatedImages).values({
+            id: imageId,
+            userId: (userId && userId !== 'demo-user') ? userId : null,
+            teammateId: teammateId || null,
+            prompt: result.prompt,
+            imageUrl: result.imageUrl,
+            replicateId: result.replicateId || result.id, // Using the generation ID as replicateId for compatibility
+            model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 
+                   provider === 'qwen' ? 'DashScope/wanx-image-generation' : 
+                   'ideogram-ai/ideogram-v3-turbo',
+            provider: provider,
+            parameters: JSON.stringify(result.parameters),
+            status: 'completed',
+          });
 
-        console.log('Image generated and stored successfully:', imageId);
+          console.log('Image generated and stored successfully:', imageId);
+        } catch (dbError) {
+          console.warn('Failed to store image in database, but generation was successful:', dbError);
+          // Don't fail the whole request if database storage fails
+        }
+      }
+>>>>>>> Stashed changes
+
+          console.log('Image generated and stored successfully:', imageId);
+        } catch (dbError) {
+          console.warn('Failed to store image in database, but generation was successful:', dbError);
+          // Don't fail the whole request if database storage fails
+        }
       }
 
-      // Log generation history
-      if (userId) {
-        const generationTime = Math.round((Date.now() - startTime) / 1000);
-        
-        await db.insert(imageGenerationHistory).values({
-          id: uuidv4(),
-          userId,
-          prompt,
-          category: category || null,
-          style,
-          provider,
-          generationTime,
-          success: generationSuccess,
-          errorType,
-        });
+      // Log generation history (only if userId is provided and valid)
+      if (userId && userId !== 'demo-user') {
+        try {
+          const generationTime = Math.round((Date.now() - startTime) / 1000);
+          
+          await db.insert(imageGenerationHistory).values({
+            id: uuidv4(),
+            userId,
+            prompt,
+            category: category || null,
+            style,
+            provider,
+            generationTime,
+            success: generationSuccess,
+            errorType,
+          });
+        } catch (historyError) {
+          console.warn('Failed to log generation history:', historyError);
+          // Don't fail the whole request if history logging fails
+        }
       }
 
       return NextResponse.json({
@@ -144,21 +182,26 @@ export async function POST(request: NextRequest) {
       errorType = 'service_error';
       generationSuccess = false;
 
-      // Log failed generation
-      if (userId) {
-        const generationTime = Math.round((Date.now() - startTime) / 1000);
-        
-        await db.insert(imageGenerationHistory).values({
-          id: uuidv4(),
-          userId,
-          prompt,
-          category: category || null,
-          style,
-          provider,
-          generationTime,
-          success: false,
-          errorType: 'service_error',
-        });
+      // Log failed generation (only if userId is provided and valid)
+      if (userId && userId !== 'demo-user') {
+        try {
+          const generationTime = Math.round((Date.now() - startTime) / 1000);
+          
+          await db.insert(imageGenerationHistory).values({
+            id: uuidv4(),
+            userId,
+            prompt,
+            category: category || null,
+            style,
+            provider,
+            generationTime,
+            success: false,
+            errorType: 'service_error',
+          });
+        } catch (historyError) {
+          console.warn('Failed to log failed generation history:', historyError);
+          // Don't fail the whole request if history logging fails
+        }
       }
 
       return NextResponse.json(
