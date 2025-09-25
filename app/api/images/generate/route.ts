@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { generatedImages, imageGenerationHistory } from '@/lib/db/schema';
 import { ideogramService } from '@/lib/services/ideogram';
 import { imagenService } from '@/lib/services/imagen';
+import { qwenService } from '@/lib/services/qwen';
 import { validateImageGenerationEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
@@ -13,9 +14,14 @@ const generateImageSchema = z.object({
   userId: z.string().optional(),
   teammateId: z.string().optional(),
   style: z.enum(['realistic', 'artistic', 'professional', 'casual']).default('realistic'),
-  aspectRatio: z.enum(['1:1', '16:10', '10:16', '16:9', '9:16', '3:2', '2:3']).default('1:1'),
+  seed: z.number().optional(),
+  randomize_seed: z.boolean().default(true),
+  true_guidance_scale: z.number().default(1),
+  num_inference_steps: z.number().default(1),
+  rewrite_prompt: z.boolean().default(true),
   category: z.string().optional(),
-  provider: z.enum(['ideogram', 'imagen']).default('ideogram'),
+  provider: z.enum(['ideogram', 'imagen', 'qwen']).default('ideogram'),
+  aspectRatio: z.enum(['1:1', '16:10', '10:16', '16:9', '9:16', '3:2', '2:3']).default('1:1'),
 });
 
 export async function POST(request: NextRequest) {
@@ -30,11 +36,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { prompt, userId, teammateId, style, aspectRatio, category, provider } = validation.data;
+    const { prompt, userId, teammateId, style, aspectRatio, seed, randomize_seed, true_guidance_scale, num_inference_steps, rewrite_prompt, category, provider } = validation.data;
 
     // Check environment configuration for the selected provider
-    const envCheck = validateImageGenerationEnvironment(provider);
-    if (!envCheck.isValid) {
+    const envCheck = validateImageGenerationEnvironment(provider === 'qwen' ? 'ideogram' : provider);
+    if (!envCheck.isValid && provider !== 'qwen') {
       return NextResponse.json(
         { 
           success: false, 
@@ -46,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Starting image generation:', { prompt, style, aspectRatio, provider });
+    console.log('Starting image generation:', { prompt, style, aspectRatio, seed, randomize_seed, true_guidance_scale, num_inference_steps, rewrite_prompt, provider });
 
     const startTime = Date.now();
     let generationSuccess = false;
@@ -61,6 +67,15 @@ export async function POST(request: NextRequest) {
           aspect_ratio: aspectRatio,
           style_type: style,
           number_of_images: 1,
+        });
+      } else if (provider === 'qwen') {
+        result = await qwenService.generateImage({
+          prompt,
+          seed,
+          randomize_seed,
+          true_guidance_scale,
+          num_inference_steps,
+          rewrite_prompt,
         });
       } else {
         // Default to Ideogram
@@ -88,8 +103,10 @@ export async function POST(request: NextRequest) {
           teammateId: teammateId || null,
           prompt: result.prompt,
           imageUrl: result.imageUrl,
-          replicateId: result.replicateId,
-          model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 'ideogram-ai/ideogram-v3-turbo',
+          replicateId: result.replicateId || result.id, // Using the generation ID as replicateId for compatibility
+          model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 
+                 provider === 'qwen' ? 'DashScope/wanx-image-generation' : 
+                 'ideogram-ai/ideogram-v3-turbo',
           provider: provider,
           parameters: JSON.stringify(result.parameters),
           status: 'completed',

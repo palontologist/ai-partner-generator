@@ -1,5 +1,6 @@
 import Replicate from 'replicate';
 import { v4 as uuidv4 } from 'uuid';
+import { enhanceFacePrompt, generateCategoryFacePrompt, FaceGenerationOptions } from '../prompt-enhancers';
 
 export interface IdeogramGenerationOptions {
   prompt: string;
@@ -108,15 +109,45 @@ class IdeogramService {
     description: string,
     style: 'realistic' | 'artistic' | 'professional' | 'casual' = 'realistic'
   ): Promise<GeneratedImageResult> {
-        const enhancedPrompt = this.createHumanPortraitPrompt({
+    // Extract age from description if available
+    const ageMatch = description.match(/(\d+)\s*years?\s*old/i);
+    const age = ageMatch ? parseInt(ageMatch[1]) : null;
+
+    // Use enhanced prompt generation with the local createHumanPortraitPrompt method
+    const enhancedPrompt = this.createHumanPortraitPrompt({
       name,
       category,
       description,
       style
-    })
+    });
+
+    // Also try the remote enhanceFacePrompt if available
+    let finalPrompt = enhancedPrompt;
+    try {
+      const baseDescription = `${name}, ${category} professional, ${description}`;
+      const styleMap = {
+        realistic: 'realistic' as const,
+        artistic: 'artistic' as const,
+        professional: 'professional' as const,
+        casual: 'casual' as const
+      };
+
+      const enhanced = enhanceFacePrompt(baseDescription, {
+        style: styleMap[style],
+        age: age || undefined,
+        mood: style === 'casual' ? 'friendly' : 'professional',
+        lighting: style === 'artistic' ? 'dramatic' : 'studio',
+        background: style === 'professional' ? 'office' : 'clean'
+      });
+      
+      finalPrompt = enhanced.prompt;
+    } catch (error) {
+      // If enhanceFacePrompt is not available, use the local method
+      console.log('Using local prompt enhancement method');
+    }
     
     return this.generateImage({
-      prompt:enhancedPrompt,
+      prompt: finalPrompt,
       aspect_ratio: '1:1',
       style_type: 'Realistic',
       magic_prompt_option: 'On',

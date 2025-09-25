@@ -12,6 +12,7 @@ import ImageGenerator from '@/components/ImageGenerator';
 import { CategorySelector } from '@/components/CategorySelector';
 import { Loader2, User, ImageIcon, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateCategoryFacePrompt } from '@/lib/prompt-enhancers';
 
 interface TeammateFormData {
   name: string;
@@ -89,17 +90,36 @@ export default function EnhancedProfileForm({
   };
 
   const generateAutoPrompt = () => {
-    const { name, category, bio, age, location } = formData;
-    let prompt = `Professional ${category} expert`;
-    
-    if (name) prompt += ` named ${name}`;
-    if (age) prompt += `, ${age} years old`;
-    if (location) prompt += ` from ${location}`;
-    if (bio) prompt += `, ${bio.slice(0, 100)}`;
-    
-    prompt += ', high quality portrait, professional headshot';
-    
-    handleInputChange('imagePrompt', prompt);
+    const { name, category, bio, age, location, imageStyle } = formData;
+
+    if (!name || !category || !bio) {
+      toast.error('Please fill in name, category, and bio first');
+      return;
+    }
+
+    // Create base description from bio
+    const baseDescription = `${bio}${age ? `, ${age} years old` : ''}${location ? `, located in ${location}` : ''}`;
+
+    // Use the enhanced prompt generator
+    const styleMap = {
+      realistic: 'realistic' as const,
+      artistic: 'artistic' as const,
+      professional: 'professional' as const,
+      casual: 'casual' as const
+    };
+
+    const enhanced = generateCategoryFacePrompt(
+      category,
+      name,
+      baseDescription,
+      {
+        style: styleMap[imageStyle],
+        age,
+        mood: imageStyle === 'casual' ? 'friendly' : 'professional'
+      }
+    );
+
+    handleInputChange('imagePrompt', enhanced.prompt);
     setShowImageGenerator(true);
   };
 

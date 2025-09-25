@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateEnvironment, isDatabaseConfigured, isReplicateConfigured } from '@/lib/env-check';
+import { validateEnvironment, isDatabaseConfigured, isDashScopeConfigured } from '@/lib/env-check';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
           configured: isDatabaseConfigured(),
           status: isDatabaseConfigured() ? 'ready' : 'not configured'
         },
-        replicate: {
-          configured: isReplicateConfigured(),
-          status: isReplicateConfigured() ? 'ready' : 'not configured'
+        dashscope: {
+          configured: isDashScopeConfigured(),
+          status: isDashScopeConfigured() ? 'ready' : 'not configured'
         }
       },
       configuration: {

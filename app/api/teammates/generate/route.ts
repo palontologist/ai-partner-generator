@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { teammates } from '@/lib/db/schema';
-import { ideogramService } from '@/lib/services/ideogram';
+import { qwenService } from '@/lib/services/qwen';
 import { validateEnvironment } from '@/lib/env-check';
 import { z } from 'zod';
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         // Create a detailed prompt based on bio and category
         const description = imagePrompt || `${bio}, professional in ${category}`;
         
-        const result = await ideogramService.generateTeammateImage(
+        const result = await qwenService.generateTeammateImage(
           name,
           category,
           description,
