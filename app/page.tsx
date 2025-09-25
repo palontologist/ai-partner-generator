@@ -32,11 +32,35 @@ export default function FindYourAIPartner() {
     if (!userPhoto || !description.trim()) return
 
     setIsGenerating(true)
-    // Simulate AI generation delay
-    await new Promise((resolve) => setTimeout(resolve, 3000))
-
-    // For now, use a placeholder image since no AI integration is available
-    setGeneratedPartner("/beautiful-ai-partner-portrait.jpg")
+    
+    try {
+      // Create a prompt based on the user's description
+      const prompt = `Create a professional AI partner portrait based on this description: ${description}. Style: realistic, professional, friendly, approachable person.`;
+      
+      // Call our image generation API
+      const response = await fetch('/api/test-image-gen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.imageUrl) {
+        setGeneratedPartner(data.imageUrl);
+      } else {
+        // Fallback to placeholder if generation fails
+        console.error('Image generation failed:', data.error);
+        setGeneratedPartner("/beautiful-ai-partner-portrait.jpg");
+      }
+    } catch (error) {
+      console.error('Error calling image generation API:', error);
+      // Fallback to placeholder on error
+      setGeneratedPartner("/beautiful-ai-partner-portrait.jpg");
+    }
+    
     setIsGenerating(false)
   }
 

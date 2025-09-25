@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Generation</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { margin: 20px 0; }
+        textarea { width: 100%; height: 100px; margin: 10px 0; }
+        button { padding: 10px 20px; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .result { margin: 20px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .error { background: #ffebee; border-color: #f44336; }
+        .success { background: #e8f5e8; border-color: #4caf50; }
+        img { max-width: 100%; height: auto; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Test Image Generation API</h1>
+    
+    <div class="container">
+        <label for="prompt">Enter image prompt:</label>
+        <textarea id="prompt" placeholder="Describe the image you want to generate...">A beautiful sunset over mountains</textarea>
+        <button onclick="generateImage()" id="generateBtn">Generate Image</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        async function generateImage() {
+            const prompt = document.getElementById('prompt').value.trim();
+            const button = document.getElementById('generateBtn');
+            const resultDiv = document.getElementById('result');
+            
+            if (!prompt) {
+                resultDiv.innerHTML = '<div class="result error">Please enter a prompt</div>';
+                return;
+            }
+            
+            button.disabled = true;
+            button.textContent = 'Generating...';
+            resultDiv.innerHTML = '<div class="result">Generating image, please wait...</div>';
+            
+            try {
+                const response = await fetch('/api/test-image-gen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Image Generated Successfully!</h3>
+                            <p><strong>Image URL:</strong> ${data.imageUrl}</p>
+                            <img src="${data.imageUrl}" alt="Generated image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                            <div style="display:none; color: #666;">⚠️ Image file not found (API may have worked but file wasn't saved properly)</div>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Error</h3>
+                            <p><strong>Error:</strong> ${data.error}</p>
+                            ${data.details ? `<p><strong>Details:</strong> ${data.details}</p>` : ''}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Network Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Generate Image';
+            }
+        }
+    </script>
+</body>
+</html>
