@@ -15,6 +15,10 @@ export function isImagenConfigured(): boolean {
   return !!process.env.GEMINI_API_KEY;
 }
 
+export function isAIGatewayConfigured(): boolean {
+  return !!process.env.OPENAI_API_KEY;
+}
+
 export function isProductionBuild(): boolean {
   return process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build';
 }
@@ -40,7 +44,7 @@ export function validateEnvironment() {
   };
 }
 
-export function validateImageGenerationEnvironment(provider: 'ideogram' | 'imagen' | 'qwen' = 'ideogram') {
+export function validateImageGenerationEnvironment(provider: 'ideogram' | 'imagen' | 'qwen' | 'gemini' = 'ideogram') {
   const missing: string[] = [];
   
   if (provider === 'ideogram' && !process.env.REPLICATE_API_TOKEN) {
@@ -53,6 +57,10 @@ export function validateImageGenerationEnvironment(provider: 'ideogram' | 'image
   
   if (provider === 'qwen' && !process.env.DASHSCOPE_API_KEY) {
     missing.push('DASHSCOPE_API_KEY');
+  }
+
+  if (provider === 'gemini' && !process.env.OPENAI_API_KEY) {
+    missing.push('OPENAI_API_KEY');
   }
   
   // Database is always required
