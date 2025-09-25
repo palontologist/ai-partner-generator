@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
             imageUrl: result.imageUrl,
             replicateId: result.replicateId || result.id, // Using the generation ID as replicateId for compatibility
             model: provider === 'imagen' ? 'imagen-4.0-generate-001' : 
-                   provider === 'qwen' ? 'DashScope/wanx-image-generation' : 
+                   provider === 'qwen' ? 'DashScope/qwen-image' : 
                    'ideogram-ai/ideogram-v3-turbo',
             provider: provider,
             parameters: JSON.stringify(result.parameters),
